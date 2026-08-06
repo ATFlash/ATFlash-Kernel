@@ -1,0 +1,20 @@
+OUT = /home/USER/atflash/shared/results/20260719_090625_agentB_n128k_speed
+
+=== PREFILL @131072 (ms) ===
+  fa4_off_packF: 334.0300
+  fa4_off_packT: 329.6252
+  fa4_on_packF: 274.6728
+  fa4_on_packT: 254.7770
+  fi_prefill: 311.8685
+  sdpa_cudnn: 304.6196
+  window/stock  = 1.2938
+  min(cuDNN,FI) = 304.6196 (cuDNN);  min/window = 1.1956   <-- ABSTRACT prefill square
+
+=== DECODE @131072 ===
+  fi_stock: 0.34032 ms
+  fiwin_on: 0.26445 ms
+  sdpa_cudnn: 0.34288 ms
+  sdpa_flash: 0.36074 ms
+  stockFI/window = 1.2869   <-- ABSTRACT decode square
+  sdpa_cudnn/window = 1.2966
+  sdpa_flash/window = 1.3641

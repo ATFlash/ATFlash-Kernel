@@ -1,0 +1,70 @@
+{
+ "script": "atflash_e2e.py",
+ "script_version": "v1",
+ "agent": "e2e",
+ "torch": "2.11.0+cu128",
+ "cuda": "12.8",
+ "cudnn": 91900,
+ "device": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+ "driver_smi_at_start": "595.71.05",
+ "model": "Qwen/Qwen2.5-7B-Instruct-1M",
+ "dtype": "bf16",
+ "batch": 1,
+ "attn_impl": "fafi(FA4 prefill / FlashInfer decode)",
+ "k_ret": 2.0,
+ "k_ret_prefill": 2.0,
+ "k_ret_decode": 2.0,
+ "prefill_cfg": {
+  "block_m": 64,
+  "block_n": 64,
+  "block_d": 32,
+  "num_warps": 4,
+  "num_stages": 2
+ },
+ "decode_cfg": {
+  "block_n": 128,
+  "block_d": 32,
+  "num_warps": 4,
+  "num_stages": 2,
+  "sm_target": 256
+ },
+ "raw_base": 10000000.0,
+ "wvec_from": "WIDTH=\u7d20\u57fa\u6570 raw_base(\u516c\u8868\u30d9\u30f3\u30c1\u540c\u4e00) / ORDER=real inv_freq permute",
+ "wvec_head": [
+  97686568.0,
+  75938128.0,
+  59031644.0,
+  45889136.0
+ ],
+ "wvec_tail": [
+  26.750682830810547,
+  20.795045852661133,
+  16.165340423583984,
+  12.566370964050293
+ ],
+ "head_dim": 128,
+ "timing": "CUDA events per forward + wall; greedy; single request",
+ "args": {
+  "model": "qwen7b1m",
+  "bench": "longbench",
+  "tasks": "niah_single_1,niah_multikey_1,qa_1",
+  "seqlen": 8192,
+  "n": 1,
+  "ctx_cap": 1000000,
+  "lb_skip": 5,
+  "lb_file": "/home/USER/atflash/agents/agentB/phasea/lb_long_pool_1m.jsonl",
+  "lb_long_only": true,
+  "lb_max_new": 40,
+  "k_ret": 2.0,
+  "k_ret_prefill": 2.0,
+  "k_ret_decode": 2.0,
+  "timing_only": false,
+  "prefill_chunk": 65536,
+  "no_cudnn": true,
+  "smoke": false,
+  "full_logits_items": 1,
+  "topic": "phasec_1m_tim_ext_d5"
+ },
+ "started_utc": "20260721_053417",
+ "hostname": "workstation-1"
+}

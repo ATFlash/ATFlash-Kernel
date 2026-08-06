@@ -1,0 +1,8 @@
+46eebce [B1] split-KV: uniform split-band mainloop (window semantics independent of num_splits)
+398961b [B1] split-KV: _check_type accepts Float32 out_partial
+0e9a9a2 [B1] sm80/sm120 split-KV (decode): partial fp32 epilogue + window composition
+bc21b79 [B1] fix trace: range_constexpr for level loops, statement-form constexpr selects
+c7fd744 [B1] interface: opt-in atflash_window_zhi plumbing (SM80/SM120 fwd)
+860e2e9 [B1] atflash_window: host-side window/zhi table (w01/w06 verbatim port)
+15c9564 [B1] flash_fwd sm80: distance-banded dim-prefix window (opt-in via window_zhi)
+4611f08 [B1] ampere_helpers.gemm: add constexpr k_chunks to truncate K-reduction

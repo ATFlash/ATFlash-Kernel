@@ -1,0 +1,7 @@
+# This is a Linux/CUDA repository: keep LF in the working tree on every platform.
+# Patches and diffs in kernels/ must stay LF or `git apply` / `patch` will fail,
+# and the bundled MD5SUMS.txt is computed against LF content.
+* text=auto eol=lf
+
+*.png  binary
+*.npz  binary

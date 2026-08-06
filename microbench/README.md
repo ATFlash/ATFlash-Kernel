@@ -1,0 +1,35 @@
+# microbench/ — port-latency figure / §7.1
+
+The 7B prefill microbenchmark behind the port-latency figure (§7.1) plus the
+diagnostic probes that fixed the measurement protocol.
+
+| file | role |
+|---|---|
+| `phasec_7b_prefill_mb.py` + `7b_prefill_mb.json` | The 4-series sweep behind the figure (stock FA4 / window / cuDNN / FlashInfer, 8K–512K) and its output. |
+| `remeasure_512k.py` | Reproduce the >512K quadratic degradation. |
+| `b1_bench_protocol.py`, `b1_correctness_w01.py` | B1 prefill sweep + w01 correctness. |
+| `fi_prefill_probe.py`, `chunked_attn_probe.py`, `cudnn_chunked_correct.py`, `fa4_strided_test.py` | Task-14 diagnostics that confirmed the SDPA `is_causal` top-left bug (the basis for using a bottom-right flash reference instead of cuDNN chunked prefill). |
+
+`ports_fig/` holds the measurements the two-panel port-latency figure is drawn
+from, on the RTX PRO 6000 (sm120), Llama-3.2-3B:
+
+| file | contents |
+|---|---|
+| `fiwin_bench2_rtx_sm120.json` | Decode panel: per-call CUDA-event latency for `sdpa_cudnn` / `sdpa_flash` / `fi_stock` / `fiwin_on` at kv_len 8K / 32K / 64K / 160K, same values per copy across implementations. |
+| `b1_bench_A.json`, `b1_bench_B.json`, `meta_start_A.json` | Prefill panel: the FA4 window sweep (two processes) with the environment pin and the window/zhi configuration in `meta`. |
+
+The figure's **128K group** comes from a later dedicated speed run, included here
+with the `_n128k` suffix (the files above cover 8K/32K/64K):
+
+| file | contents |
+|---|---|
+| `N128K_DIGEST.txt` | The digest both panels' 128K bars are read from. Decode @131072: `fi_stock` 0.34032 vs `fiwin_on` 0.26445 ms (stock/window = 1.2869). Prefill @131072: `fa4_off_packT` 329.6252 vs `fa4_on_packT` 254.7770 ms (1.2938), and against the fastest available FA-class implementation `min(cuDNN, FI)` = 304.6196 ms (1.1956). |
+| `fiwin_bench2_n128k.json` | Decode measurements at kv_len 131072 (same series and protocol as the 8K–160K file). |
+| `b1_bench_A_n128k.json`, `b1_bench_B_n128k.json`, `meta_start_A_n128k.json`, `meta_start_B_n128k.json` | Prefill measurements and environment pins for the same run. |
+| `results_stream_A_n128k.jsonl`, `results_stream_B_n128k.jsonl` | Per-call streams behind the aggregates. |
+| `clocks_start_n128k.txt`, `clocks_end_n128k.txt` | GPU clock/power state at the start and end of the run, so the timings can be judged against a stable clock. |
+
+The digest also carries series the figure does not draw (`fa4_off_packF`,
+`fa4_on_packF`, `fi_prefill`, `sdpa_flash`), kept so the selection is auditable.
+
+Source: 2026-07-17 RTX staging snapshot. Raw run summaries in `../results_raw/`.

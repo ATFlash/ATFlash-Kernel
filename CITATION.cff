@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper below."
+title: "ATFlash"
+authors:
+  - family-names: "Hayashi"
+    given-names: "Shun-ichiro"
+    affiliation: "Graduate School of Informatics, Nagoya University"
+  - family-names: "Mukunoki"
+    given-names: "Daichi"
+    affiliation: "Information Technology Center, Nagoya University"
+  - family-names: "Hoshino"
+    given-names: "Tetsuya"
+    affiliation: "Information Technology Center, Nagoya University"
+  - family-names: "Katagiri"
+    given-names: "Takahiro"
+    affiliation: "Information Technology Center, Nagoya University"
+preferred-citation:
+  type: article
+  title: "ATFlash: Per-RoPE-Wavelength Attention Windows for Compute/Memory-Efficient LLM Inference"
+  authors:
+    - family-names: "Hayashi"
+      given-names: "Shun-ichiro"
+    - family-names: "Mukunoki"
+      given-names: "Daichi"
+    - family-names: "Hoshino"
+      given-names: "Tetsuya"
+    - family-names: "Katagiri"
+      given-names: "Takahiro"
+  year: 2026
+  journal: "arXiv preprint"
+  url: "https://arxiv.org/abs/2608.02947"
+  identifiers:
+    - type: other
+      value: "arXiv:2608.02947"

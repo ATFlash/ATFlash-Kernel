@@ -1,0 +1,28 @@
+{
+ "script": "b1_bench_protocol.py (process A, sweep v2)",
+ "script_version": "v2",
+ "agent": "agentA",
+ "provisional": "base PR#2656 head 4f1fde1 + b1-window bc21b79 (unmerged-base; upstream squash-merged as 5835c73 2026-07-07, main diverged)",
+ "torch": "2.11.0+cu128",
+ "cuda": "12.8",
+ "cudnn": 91900,
+ "device": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+ "capability": [
+  12,
+  0
+ ],
+ "dtype": "bfloat16",
+ "batch": 1,
+ "tf32": false,
+ "k_ret": 2.0,
+ "zhi_cap": 262144,
+ "rotation": "input buffers x2 cycled for N>=65536 (8k/32k legacy no-rotation for comparability)",
+ "timing": "cuda events per-call, warmup 10, adaptive iters (target 1.5s, max 200)",
+ "flops_formula": {
+  "prefill_causal": "2*Hq*N^2*D (ideal; not window-adjusted)"
+ },
+ "ceiling_formula": "2/(1+s), s = qk_slice_ratio_theory (FA4 tile quantization)",
+ "qwen_64k_note": "OOD: Qwen2.5-0.5B context window 32k; annotation inherited",
+ "correctness_pairing": "same-day agentA w01 correctness runs (see ChangeLog)",
+ "started_utc": "2026-07-07T14:14:57Z"
+}

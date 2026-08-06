@@ -1,0 +1,12 @@
+--- /home/USER/atflash/agents/agentB/fiwin/pkgs/flashinfer/data/include/flashinfer/utils.cuh.orig0613	2026-07-15 00:30:33.843099923 +0000
++++ /home/USER/atflash/agents/agentB/fiwin/pkgs/flashinfer/data/include/flashinfer/utils.cuh	2026-07-15 00:37:43.324730436 +0000
+@@ -147,6 +147,9 @@
+   } else if (group_size == 4) {                              \
+     constexpr size_t GROUP_SIZE = 4;                         \
+     __VA_ARGS__                                              \
++  } else if (group_size == 7) {                              \
++    constexpr size_t GROUP_SIZE = 7; /* ATFLASH-B2 qwen */   \
++    __VA_ARGS__                                              \
+   } else if (group_size == 8) {                              \
+     constexpr size_t GROUP_SIZE = 8;                         \
+     __VA_ARGS__                                              \

@@ -1,0 +1,14 @@
+{
+ "script": "b1_bench_fi.py (process B, sweep v2)",
+ "script_version": "v2",
+ "agent": "agentA",
+ "torch": "2.10.0+cu128",
+ "flashinfer": "0.6.13",
+ "device": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+ "dtype": "bfloat16",
+ "batch": 1,
+ "tf32": false,
+ "impl": "flashinfer.single_prefill_with_kv_cache causal=True (NHD)",
+ "rotation": "input buffers x2 cycled for N>=65536",
+ "started_utc": "2026-07-19T09:07:14Z"
+}

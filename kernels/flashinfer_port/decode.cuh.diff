@@ -1,0 +1,91 @@
+--- /home/USER/atflash/agents/agentB/fiwin/pkgs/flashinfer/data/include/flashinfer/attention/decode.cuh.orig0613	2026-07-15 00:30:33.842099917 +0000
++++ /home/USER/atflash/agents/agentB/fiwin/pkgs/flashinfer/data/include/flashinfer/attention/decode.cuh	2026-07-15 00:37:43.323730430 +0000
+@@ -34,6 +34,10 @@
+ namespace flashinfer {
+ 
+ DEFINE_HAS_MEMBER(decode_maybe_q_rope_offset)
++// [ATFLASH-B2] per-frequency-pair prefix window (wavelength-sorted head_dim layout).
++// maybe_zhi_slice: int32[bdx], entry = max age (seq_len-1-pos) for which the vec_size-element
++// head_dim slice owned by thread tx is active. nullptr => stock path (bit-identical).
++DEFINE_HAS_MEMBER(maybe_zhi_slice)
+ 
+ namespace cg = cooperative_groups;
+ using cp_async::PrefetchMode;
+@@ -65,7 +69,8 @@
+     const Params& params, AttentionVariant variant, const uint32_t batch_idx, const T* smem,
+     const vec_t<float, vec_size>& q_vec, const vec_t<float, vec_size>& freq, uint32_t kv_idx_base,
+     uint32_t iter_base, uint32_t iter_bound, uint32_t qo_head_idx, uint32_t kv_head_idx, float* s,
+-    state_t<vec_size>& st, const uint32_t tx, const uint32_t ty, const uint32_t tz) {
++    state_t<vec_size>& st, const uint32_t tx, const uint32_t ty, const uint32_t tz,
++    const uint32_t pos_min_tx = 0) {
+   float m_prev = st.m;
+ #pragma unroll
+   for (uint32_t j = 0; j < tile_size; ++j) {
+@@ -79,15 +84,19 @@
+       k_vec.cast_load(smem + (j * bdx + tx) * vec_size);
+     }
+     s[j] = 0.f;
++    const uint32_t pos = kv_idx_base + tz * tile_size + j;
++    // [ATFLASH-B2] slice active only if pos within this thread's per-pair prefix window.
++    // pos_min_tx == 0 (window off) keeps the stock arithmetic bit-identically.
++    if (pos >= pos_min_tx) {
+ #pragma unroll
+-    for (uint32_t i = 0; i < vec_size; ++i) {
+-      s[j] += q_vec[i] * k_vec[i];
++      for (uint32_t i = 0; i < vec_size; ++i) {
++        s[j] += q_vec[i] * k_vec[i];
++      }
+     }
+ #pragma unroll
+     for (uint32_t offset = bdx / 2; offset > 0; offset /= 2) {
+       s[j] += math::shfl_xor_sync(s[j], offset);
+     }
+-    const uint32_t pos = kv_idx_base + tz * tile_size + j;
+     s[j] = variant.LogitsTransform(params, s[j], batch_idx, /*qo_idx=*/0, /*kv_idx=*/pos,
+                                    qo_head_idx, kv_head_idx);
+     if constexpr (variant.use_softmax) {
+@@ -267,6 +276,15 @@
+     // do not apply rotary embedding to q matrix
+     q_vec.cast_load(q + qo_head_idx * q_stride_h + tx * vec_size);
+   }
++  // [ATFLASH-B2] per-thread window lower bound: slice tx is active for pos >= pos_min_tx.
++  uint32_t pos_min_tx = 0;
++  if constexpr (has_maybe_zhi_slice_v<Params>) {
++    if (params.maybe_zhi_slice != nullptr) {
++      const int64_t zhi_tx = static_cast<int64_t>(params.maybe_zhi_slice[tx]);
++      const int64_t lo = static_cast<int64_t>(seq_len) - 1 - zhi_tx;
++      pos_min_tx = lo > 0 ? static_cast<uint32_t>(lo) : 0U;
++    }
++  }
+   block.sync();
+ 
+   uint32_t chunk_start = kv_chunk_idx * kv_chunk_size;
+@@ -284,7 +302,8 @@
+               tx * vec_size,
+           k + (producer_kv_idx_base + (tz * bdy + ty) * tile_size_per_bdx + j) * kv_stride_n +
+               kv_head_idx * kv_stride_h + tx * vec_size,
+-          producer_kv_idx_base + (tz * bdy + ty) * tile_size_per_bdx + j < chunk_end);
++          (producer_kv_idx_base + (tz * bdy + ty) * tile_size_per_bdx + j < chunk_end) &&
++              (producer_kv_idx_base + (tz * bdy + ty) * tile_size_per_bdx + j >= pos_min_tx));
+     }
+     cp_async::commit_group();
+     for (uint32_t j = 0; j < tile_size_per_bdx; ++j) {
+@@ -313,7 +332,7 @@
+         params, variant, /*batch_idx=*/0,
+         k_smem + (stage_idx * bdz + tz) * bdy * tile_size_per_bdx * head_dim, q_vec, freq,
+         consumer_kv_idx_base, iter * bdy * tile_size_per_bdx * bdz, kv_chunk_size, qo_head_idx,
+-        kv_head_idx, s, st_local, tx, ty, tz);
++        kv_head_idx, s, st_local, tx, ty, tz, pos_min_tx);
+     block.sync();
+     // load k
+     for (uint32_t j = 0; j < tile_size_per_bdx; ++j) {
+@@ -322,7 +341,8 @@
+               tx * vec_size,
+           k + (producer_kv_idx_base + (tz * bdy + ty) * tile_size_per_bdx + j) * kv_stride_n +
+               kv_head_idx * kv_stride_h + tx * vec_size,
+-          producer_kv_idx_base + (tz * bdy + ty) * tile_size_per_bdx + j < chunk_end);
++          (producer_kv_idx_base + (tz * bdy + ty) * tile_size_per_bdx + j < chunk_end) &&
++              (producer_kv_idx_base + (tz * bdy + ty) * tile_size_per_bdx + j >= pos_min_tx));
+     }
+     cp_async::commit_group();
+ 

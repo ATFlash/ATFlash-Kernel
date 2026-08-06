@@ -1,0 +1,13 @@
+== 1M e2e combined  n=6 ==
+  p2d2(0-2)  id=lbv2_66f3df1e821e116aacb2f7be  OFF=764.329s ON=588.173s req=1.299x pf=1.301x dec=1.065x
+  p2d2(0-2)  id=lbv2_66fb75adbb02136c067c7d73  OFF=765.756s ON=588.43s req=1.301x pf=1.303x dec=1.065x
+  p2d2(0-2)  id=lbv2_66f40c5e821e116aacb30ad2  OFF=765.944s ON=587.406s req=1.304x pf=1.306x dec=1.065x
+  ext_d3     id=lbv2_66f3e318821e116aacb2f9d1  OFF=768.899s ON=586.576s req=1.311x pf=1.313x dec=1.065x
+  ext_d4     id=lbv2_66fb77e7bb02136c067c7db1  OFF=767.649s ON=587.07s req=1.308x pf=1.31x dec=1.065x
+  ext_d5     id=lbv2_66fa5fbcbb02136c067c6959  OFF=768.627s ON=587.037s req=1.309x pf=1.311x dec=1.065x
+
+-- n6 MEDIAN --
+  req_speedup(win/off) = 1.3058x
+  req_time_off = 766.8s   req_time_win = 587.2s
+  prefill_speedup = 1.3078x   decode_speedup = 1.0648x
+  (existing n3 p2d2 published: req 1.3014x / OFF 765.8s / ON 588.2s)
