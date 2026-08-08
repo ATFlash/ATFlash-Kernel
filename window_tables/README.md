@@ -22,5 +22,6 @@ bit-identical to full attention.
 | `w_meta_qwen257b1m_convexk2.json` | Materialized table, Qwen2.5-7B-Instruct-1M. |
 | `w_meta_qwen257b1m_yarn_s2_convexk2.json` | Materialized table, 7B-1M under YaRN s=2. |
 
-Sources: zhi generators from the 2026-07-17 RTX staging; w_meta generators/tables
-from the 2026-07-21 drop (engine-side + canonical-run copies).
+Sources: zhi generators from the 2026-07-17 RTX staging snapshot; the w_meta
+generators and materialized tables from 2026-07-21 — both the copies used by the
+serving backend and the ones used by the canonical runs, which are identical.
