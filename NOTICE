@@ -1,0 +1,25 @@
+ATFlash
+Copyright 2026 Shun-ichiro Hayashi, Daichi Mukunoki, Tetsuya Hoshino,
+               Takahiro Katagiri
+
+This product includes software developed as part of the work described in
+"ATFlash: Per-RoPE-Wavelength Attention Windows for Compute/Memory-Efficient
+LLM Inference" (arXiv:2608.02947).
+
+-------------------------------------------------------------------------------
+This product contains modifications to, and diffs against, third-party
+open-source projects. Those portions remain under their original licenses:
+
+  * FlashAttention (BSD-3-Clause)
+      kernels/fa4_port/fa4_cute_interface.py  -- modified copy of an upstream
+                                                 source file
+      kernels/fa4_port/*.patch                -- diffs against upstream
+      License: third_party/flash-attention/LICENSE
+
+  * FlashInfer (Apache-2.0)
+      kernels/flashinfer_port/*.diff          -- diffs against upstream
+      License: third_party/flashinfer/LICENSE
+      Upstream attribution notices: third_party/flashinfer/NOTICE
+
+See THIRD_PARTY_NOTICES.md for details. Neither upstream project is
+affiliated with, nor endorses, these modifications.

@@ -1,8 +1,10 @@
 62e48129aed6620c1f25339ad7fa4547 *./.gitattributes
 6839870d25c33c0e1a4578e55c7e6a27 *./.gitignore
 cae8840a6d344f7643d56c2cb5fe49e6 *./CITATION.cff
-b9b75263c2b0d150e3fab003360cdd56 *./README.md
-05aa63a25304e79a865bfed1479fb179 *./THIRD_PARTY_NOTICES.md
+3b83ef96387f14655fc854ddc3c6bd57 *./LICENSE
+db025ee882cfa906ced8f6ab9db88124 *./NOTICE
+fc6537a8686ad0bd36c7234a8b1fd87f *./README.md
+06373adf62994895909cafb068967b5f *./THIRD_PARTY_NOTICES.md
 ecf59d060a546b06c7334e5bcfba4b1f *./e2e_pipeline/README.md
 179ac4f24a7b71b6c5ac1af2942c5a89 *./e2e_pipeline/atflash_e2e_fafi.py
 db1f9f4d0fa886a0a1508f131075f462 *./e2e_pipeline/b2_n8_kdial.sh
@@ -110,6 +112,10 @@ e92dee611a0a52e6c97432554148a038 *./results_raw/summaries/20260716_081254_phasec
 d24595b9f5b65b506b9fe70cd5c86313 *./results_raw/summaries/20260716_092426_phasec_512k_qual_p2d2.e2e_summary.json
 157d6e1a28820e8888ba64941366ee1e *./results_raw/summaries/20260716_103143_phasec_1m_qual_p2d2.e2e_summary.json
 a6e4f964bb5205049cb831d5597294ee *./results_raw/summaries/20260716_123131_phasec_1m_qual_p3d3.e2e_summary.json
+bab15ce8518f25bb2b07449b4c99a3c7 *./third_party/flash-attention/AUTHORS
+0f5fe03b6862f8b140b55243259ceaa8 *./third_party/flash-attention/LICENSE
+a1f1651a84f91f930e55e0474a89f421 *./third_party/flashinfer/LICENSE
+242583ed3063332744e48b60ad1b74bc *./third_party/flashinfer/NOTICE
 9cc7e1f02579f82e628c502acd989b99 *./window_tables/README.md
 c03811cdbd92f100f45fc52ef7b684e2 *./window_tables/atflash_window_zhi_gen.py
 deb1a1ce233e8829ef1ea759c44fec8b *./window_tables/c1_window_precheck.py

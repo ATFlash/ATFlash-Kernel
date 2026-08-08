@@ -117,11 +117,14 @@ at your own environment to re-run.
 
 ## License
 
-**TBD — not yet finalized.** This repository contains derivative work:
-`kernels/fa4_port/` derives from FlashAttention (BSD-3-Clause) and
-`kernels/flashinfer_port/` from FlashInfer (Apache-2.0); see
-`THIRD_PARTY_NOTICES.md`. A license for the original code will be added before
-the repository is published.
+Apache-2.0 (`LICENSE`, `NOTICE`).
+
+Two parts are derived from other projects and keep their original licenses:
+`kernels/fa4_port/` from FlashAttention (BSD-3-Clause) and
+`kernels/flashinfer_port/*.diff` from FlashInfer (Apache-2.0). Full texts are
+under `third_party/`; the file-by-file breakdown is in
+`THIRD_PARTY_NOTICES.md`. Neither upstream project is affiliated with or
+endorses these modifications.
 
 ## Citation
 
