@@ -50,6 +50,6 @@ FlashInfer API but contains no upstream code.
 
 ## Everything else
 
-All other files — the window rule and tables, the Triton reference kernels, the
-gates, the benchmarks and harnesses, the figures and the documentation — are
-original work of the authors, under Apache-2.0.
+All other files — the window rule and tables, the torch reference, the gates,
+the benchmarks and harnesses, the figures and the documentation — are original
+work of the authors, under Apache-2.0.

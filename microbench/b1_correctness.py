@@ -18,8 +18,8 @@ import sys
 
 import torch
 
-from kernel_window.w01_torch_ref import window_table as WT
-from kernel_window.w01_torch_ref.ref_attn import ref_window_attn
+from atflash import window_table as WT
+from atflash.reference import ref_window_attn
 from flash_attn.cute.interface import _flash_attn_fwd
 from flash_attn.cute.atflash_window import window_zhi_from_kret, zhi_table
 

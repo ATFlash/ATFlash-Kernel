@@ -33,7 +33,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn.attention import SDPBackend, sdpa_kernel
 
-from kernel_window.w01_torch_ref import window_table as WT
+from atflash import window_table as WT
 
 # --- agentB Phase B: FA4 (prefill) + FlashInfer (decode) ports ---------------
 # window WIDTH = 素基数 (raw pre-scaling RoPE base) zhi table == published benches

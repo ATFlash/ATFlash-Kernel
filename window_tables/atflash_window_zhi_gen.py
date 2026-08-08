@@ -2,10 +2,10 @@
 """ATFlash B1: host-side window table for the distance-banded dim-prefix QK window.
 
 This module is a pure-Python port (no torch dependency) of the canonical ATFlash
-route-(i) window table:
+window table:
 
-  - window vector ("wavelength-proportional", verify_restructure.py section (4) /
-    kernel_window/w01_torch_ref/window_table.py::wavelengths_sorted):
+  - window vector ("wavelength-proportional"; the torch-free twin of
+    atflash/window_table.py::wavelengths_sorted):
         RoPE pair r (standard order, r=0 highest frequency):
             theta_r  = rope_base ** (-2*r / head_dim)
             lambda_r = 2*pi / theta_r
@@ -56,7 +56,7 @@ def _f32(x: float) -> float:
 def wavelengths_sorted(head_dim: int, rope_base: float, k_ret: float) -> Tuple[float, ...]:
     """fp32 [P]: sorted pair j (lowest frequency first) window width, descending.
 
-    Port of kernel_window/w01_torch_ref/window_table.py::wavelengths_sorted:
+    Torch-free port of atflash/window_table.py::wavelengths_sorted:
         w'_j = k_ret * 2*pi * rope_base ** (2*(P-1-j) / head_dim)
     computed in fp64 and rounded to fp32 (same as torch float64 -> float32 cast).
     k_ret=inf means "no window" (all pairs always active).

@@ -9,15 +9,17 @@ builders and launch drivers behind Table 3.
 | `atflash_e2e_fafi.py` | The HF-integrated e2e harness: FA4 prefill + FI decode, window ON/OFF same binary, chunked prefill, CUDA-event per-forward timing, quality (top1/ppl/KL) decomposition. |
 | `build_long_pool.py` | LongBench-v2 long-doc pool builder. |
 | `truncate_pool.py`, `truncate_pool_1m.py` | Center-truncate the pool to 132K / 1M bands. |
-| `c2_1m.sh`, `c2_256k.sh`, `c2_512k.sh`, `c2_rest.sh` | C2 (Qwen2.5-7B-1M) launch drivers for Table 3 (1M / 512K / 256K). |
-| `b2_n8_kdial.sh`, `b2_timing.sh` | B2 (Llama-3.2-3B) e2e / k-dial drivers. |
-| `gpu_lock.sh` | GPU-occupancy lock wrapper (`ATFLASH_AGENT` / `ATFLASH_MIN_FREE_MB` / `ATFLASH_CMD_TIMEOUT`). |
-| `run_1m_e2e_ext.sh` | 1M n=3 → n=6 extension driver (docs 3,4,5; graceful yield to foreign GPU processes). |
 | `combine_1m_n6.py` | Combine the n=3 run + extension → n=6 median request / prefill / decode speedup and OFF→ON seconds. |
 
-Sources: `atflash_e2e_fafi.py` and the drivers/pool-builders from the 2026-07-17
-RTX staging; `run_1m_e2e_ext.sh` / `combine_1m_n6.py` from the 2026-07-21 extension.
-Raw run summaries are in `../results_raw/summaries/`.
+The shell drivers that launched these runs are not included: they were specific
+to one machine's paths and scheduler, and carried no information beyond the
+arguments. The harness takes its configuration on the command line — read the
+`argparse` block at the top of `atflash_e2e_fafi.py`, and the `meta_start.json`
+of any run under `n6_1m/` records the exact settings that produced it.
+
+Sources: `atflash_e2e_fafi.py` and the pool builders from the 2026-07-17 RTX
+staging; `combine_1m_n6.py` from the 2026-07-21 extension. Raw run summaries are
+in `../results_raw/summaries/`.
 
 `n6_1m/` holds the three extension runs (documents 3, 4, 5) that take the 1M
 point from n=3 to n=6: each run's `e2e_summary.json` and `meta_start.json`, plus

@@ -1,15 +1,21 @@
 # -*- coding: utf-8 -*-
-"""ATFlash 路線(i) — torch 参照実装 (w01): dim-prefix マスクの素直な実装.
+"""Torch reference implementation of the dim-prefix window.
 
-banded full-softmax reference:
-  q タイル毎に S 行ブロック [hq, BM, n_hi] を deff 区間の banded matmul で構築し
-  (prefix 次元のみの内積 = dim-prefix マスク), 通常の softmax -> P @ V。
-  mode="fp32": 全演算 fp32 (正しさの基準)。
-  mode="bf16": matmul を bf16 で行い (fp32 accum, 出力 bf16 丸め), softmax は fp32,
-               P を bf16 に落として PV。Triton kernel の算術を模倣する誤差アンカー。
+A banded full-softmax reference, written for clarity rather than speed: for each
+query tile it builds the score block [hq, BM, n_hi] from the banded matmuls of
+the deff segments (an inner product over the prefix dimensions only, which is
+the window), then applies an ordinary softmax and P @ V.
 
-窓は (block_m, block_n) タイル量子化 — kernel と同一定義 (window_table 参照)。
-phase="prefill": M==N, causal。 phase="decode": M==1, query 位置 = N-1, 全 key 参照。
+    mode="fp32"  every operation in fp32 -- this is the correctness baseline.
+    mode="bf16"  matmuls in bf16 (fp32 accumulate, bf16 rounded output), softmax
+                 in fp32, P cast to bf16 before PV. This mirrors the arithmetic
+                 of a real kernel and serves as the error anchor for one.
+
+The window is tile-quantized by (block_m, block_n) using exactly the definition
+in window_table, so this reference and a kernel can be compared directly.
+
+    phase="prefill"  M == N, causal.
+    phase="decode"   M == 1, the query sits at position N-1 and sees every key.
 """
 import math
 
@@ -20,7 +26,8 @@ from . import window_table as WT
 
 def ref_window_attn(q, k, v, wvec, *, phase: str, block_m: int, block_n: int,
                     mode: str = "fp32"):
-    """q:(b,hq,M,d) k,v:(b,hkv,N,d) bf16. 戻り値 (b,hq,M,d) fp32 (mode=fp32) / bf16."""
+    """q:(b,hq,M,d) k,v:(b,hkv,N,d) bf16. Returns (b,hq,M,d), fp32 for mode="fp32"
+    and bf16 otherwise."""
     assert mode in ("fp32", "bf16")
     assert phase in ("prefill", "decode")
     b, hq, M, d = q.shape

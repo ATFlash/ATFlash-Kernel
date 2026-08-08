@@ -1,23 +1,34 @@
 # -*- coding: utf-8 -*-
-"""ATFlash 路線(i) 窓のみ — canonical dim-prefix window table (w01).
+"""Canonical dim-prefix window table for ATFlash.
 
-定義 (shared/src/verify_restructure.py §(4) / atflash_r_outer.html E10 に整合):
-  RoPE pair r (標準順, r=0 最高周波): theta_r = base^(-2r/d), lambda_r = 2*pi/theta_r
-  pair r の窓幅 w_r = k_ret * lambda_r
-    (verify_restructure.py は w_r = min(k_ret*lam_r, N) だが min(.,N) は
-     活性判定 z <= w_r に影響しない: z <= N-1 < N)
-  key 距離 z で pair r が active <=> z <= w_r   (verify: active = zv <= w_r)
+Definition. For RoPE pair r in standard order (r=0 is the highest frequency):
 
-カーネル layout (波長順): sorted pair j = 標準 r = P-1-j (j=0 が最低周波=最長波長)。
-  pair j の成分は dim (2j, 2j+1) に連続配置。
-  active set は dim-prefix: j < n_act(z),  n_act(z) = #{r : w_r >= z}。
-  (html E10 の r_lo は標準順 suffix。同一集合の並べ替え。
-   タイルの z は z_min を使う = html の z_hi 案より広い = 品質安全側)
+    theta_r = base^(-2r/d),   lambda_r = 2*pi/theta_r
+    window width of pair r:   w_r = k_ret * lambda_r
+    pair r is active at key distance z   <=>   z <= w_r
 
-16 倍数制約 (MMA K-atom):
-  D_eff(z) = clamp(ceil(2*n_act(z)/16)*16, 16, d)  # 切上げ = 窓拡大(品質安全側)
-  タイル量子化: (BLOCK_M, BLOCK_N) タイル内の最小距離 z_min で D_eff を決定 (拡大方向)。
-  reference と kernel は同一の fp32 wvec と同一の比較 (wvec >= z) を用いる。
+Capping the width at the context length, w_r = min(k_ret*lambda_r, N), does not
+change the activity test, because z <= N-1 < N.
+
+Kernel layout (wavelength order). Sorted pair j corresponds to standard index
+r = P-1-j, so j=0 is the lowest frequency and therefore the longest wavelength.
+The two components of pair j occupy the contiguous dims (2j, 2j+1). The active
+set is then a prefix along the head dimension:
+
+    j < n_act(z),   n_act(z) = #{r : w_r >= z}
+
+which is what makes the window expressible as a shortening of the query-key
+contraction rather than as a mask.
+
+Multiple-of-16 constraint (the K-direction atom of the MMA instruction):
+
+    D_eff(z) = clamp(ceil(2*n_act(z)/16)*16, 16, d)
+
+Rounding up widens the window, i.e. it errs toward keeping terms. Tiles are
+quantized the same way: D_eff is decided from the smallest distance z_min inside
+a (BLOCK_M, BLOCK_N) tile, again widening rather than narrowing. The reference
+implementation and the kernel must use the same fp32 wvec and the same
+comparison (wvec >= z); this is what makes them bit-comparable.
 """
 import math
 
@@ -26,10 +37,11 @@ import torch
 
 def wavelengths_sorted(head_dim: int, rope_base: float, k_ret: float,
                        device="cpu") -> torch.Tensor:
-    """fp32 [P]: sorted pair j (低周波先頭) の窓幅 w'_j = k_ret * 2pi * base^(2(P-1-j)/d).
+    """fp32 [P]: window width w'_j = k_ret * 2pi * base^(2(P-1-j)/d) per sorted pair j.
 
-    降順 (j=0 最大)。k_ret=inf で窓なし (全 pair 常時 active)。
-    kernel と reference は必ずこの fp32 値と z (fp32 化) を比較する。
+    Descending, so j=0 is the widest (lowest frequency). k_ret=inf disables the
+    window and every pair stays active at all distances. Both the kernel and the
+    reference compare against these fp32 values and an fp32 z.
     """
     P = head_dim // 2
     r_std = torch.arange(P - 1, -1, -1, dtype=torch.float64)  # j=0 -> r=P-1
@@ -43,12 +55,13 @@ def wavelengths_sorted(head_dim: int, rope_base: float, k_ret: float,
 
 
 def n_active(z_min, wvec: torch.Tensor) -> int:
-    """#pairs active at distance z_min (fp32 comparison; kernel と同一)."""
+    """Number of pairs active at distance z_min (fp32 comparison, as in the kernel)."""
     return int((wvec >= float(z_min)).sum().item())
 
 
 def deff_of_zmin(z_min, wvec: torch.Tensor, head_dim: int) -> int:
-    """dim-prefix length, 16 の倍数へ切上げ, [16, head_dim] に clamp."""
+    """Prefix length along the head dim, rounded up to a multiple of 16 and
+    clamped to [16, head_dim]."""
     deff = 2 * n_active(z_min, wvec)
     deff = ((deff + 15) // 16) * 16
     return max(16, min(head_dim, deff))
@@ -56,7 +69,8 @@ def deff_of_zmin(z_min, wvec: torch.Tensor, head_dim: int) -> int:
 
 def zmin_tile(phase: str, q0: int, n0: int, block_m: int, block_n: int,
               n_ctx: int) -> int:
-    """タイル内最小距離 (kernel と同一式; 部分タイルも full block_n で計算)."""
+    """Smallest key distance inside a tile (same formula as the kernel; partial
+    tiles are still evaluated with a full block_n)."""
     if phase == "decode":
         return max(0, (n_ctx - 1) - (n0 + block_n - 1))
     return max(0, q0 - (n0 + block_n - 1))
@@ -64,10 +78,11 @@ def zmin_tile(phase: str, q0: int, n0: int, block_m: int, block_n: int,
 
 def deff_segments(phase: str, q0: int, n_hi: int, block_m: int, block_n: int,
                   n_ctx: int, wvec: torch.Tensor, head_dim: int):
-    """q タイル q0 に対する key 範囲 [0, n_hi) の (n_start, n_end, deff) 区間列.
+    """Segments (n_start, n_end, deff) covering the key range [0, n_hi) for query tile q0.
 
-    deff は key タイル毎に一定・距離単調なので連続区間に纏まる。
-    reference の banded matmul と MMA スライス統計に使う。
+    deff is constant within a key tile and monotone in distance, so it collapses
+    into contiguous runs. Used by the reference's banded matmul and by the MMA
+    slice statistics below.
     """
     segs = []
     n0 = 0
@@ -88,7 +103,8 @@ def deff_segments(phase: str, q0: int, n_hi: int, block_m: int, block_n: int,
 
 def mma_slice_stats(phase: str, m_ctx: int, n_ctx: int, block_m: int,
                     block_n: int, wvec: torch.Tensor, head_dim: int):
-    """理論 MMA k スライス数 (16dim/slice): windowed vs full と K-load bytes 比."""
+    """Theoretical MMA k-slice counts (16 dims per slice), windowed vs full,
+    together with the ratio of K bytes loaded."""
     total_win = 0
     total_full = 0
     kload_win = 0

@@ -66,16 +66,18 @@ accuracy and compute.
 
 | dir | contents |
 |---|---|
+| `atflash/` | The method itself: the window rule (`window_table.py`) and a readable torch reference (`reference.py`). Start here. |
 | `kernels/fa4_port/` | The FA4 prefill window as patches against upstream commit `5835c73`, plus the patched CuTe interface. |
 | `kernels/flashinfer_port/` | The FlashInfer 0.6.13 decode window as unified diffs, plus the JIT/shadow-copy helper. |
-| `kernels/triton_window/` | A staged, self-contained Triton/Torch reference (w01 torch reference → w07 diagonal split) — runnable without building FA4. |
-| `window_tables/` | The window rule itself: table generator from a HF model config, and the exact per-model tables used in every run. |
+| `window_tables/` | The torch-free table generator, and the exact per-model tables used in every run. |
 | `gates/` | Bit-identity and neutrality gates (window OFF == stock; chunked == single-shot). |
 | `microbench/` | The prefill microbenchmark and the raw measurements behind the latency figure above. |
-| `e2e_pipeline/` | The end-to-end 1M-context harness (FA4 prefill + FlashInfer decode inside HF transformers) and its job scripts. |
+| `e2e_pipeline/` | The end-to-end 1M-context harness (FA4 prefill + FlashInfer decode inside HF transformers). |
 | `results_raw/` | Raw run summaries behind the speed tables. |
 
 Each directory carries its own `README.md` with file-by-file roles.
+**`VERIFICATION.md` records what was actually measured, on what hardware, and —
+just as importantly — what was not.**
 
 ## Using the ports
 
@@ -97,11 +99,14 @@ config (RoPE base, head dim, rope_scaling) — nothing is learned and nothing is
 tuned per input. The tables used in the measurements are included verbatim.
 
 **Verify first.** Run `gates/` against your build: window OFF must be
-bit-identical to stock before any speed number is meaningful.
+bit-identical to stock before any speed number is meaningful. That test is the
+one we would ask of any new port, including our own.
 
-**Triton reference.** `kernels/triton_window/` is a complete FA-style windowed
-kernel in Triton (Triton 3.6.0, PyTorch 2.11, CUDA 12.8): slower than the ports
-but self-contained, and the numerical anchor the ports were validated against.
+**Porting to something else.** The two ports above are worked examples in two
+unrelated kernel idioms — a CuTeDSL kernel and a CUDA-template kernel — which is
+the evidence that the insertion is not tied to one codebase. For a third, you
+need `atflash/window_table.py` to produce the per-pair widths, the prefix length
+`D_eff` per key tile, and `atflash/reference.py` to check your output against.
 
 ## Scope and portability
 
@@ -111,9 +116,11 @@ targets of FA3/FA4 — and the paper reports them as such (§8, Limitations). Th
 window itself is architecture-neutral (a static shortening of the QK reduction);
 ports to other kernels and other hardware generations are welcome.
 
-Paths in job scripts (`/home/USER/...`) and run provenance tags (`agentA` /
-`agentB`) are placeholders from the de-identified measurement tree; point them
-at your own environment to re-run.
+Absolute paths in the harnesses (`/home/USER/...`) are placeholders standing in
+for the machine the measurements ran on, and `agentA` / `agentB` are the tags of
+the two measurement processes, kept because they are part of the run directory
+names the raw summaries refer to. Point the paths at your own environment to
+re-run.
 
 ## License
 

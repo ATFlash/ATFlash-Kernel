@@ -19,10 +19,16 @@ implementations. Window OFF is bit-identical to stock (validated by `../gates/`)
 | `decode.cuh.diff`, `utils.cuh.diff` | Unified diffs vs pristine FlashInfer 0.6.13 (91-line window + group dispatch). |
 | `fi_window_helpers.py` | FI window-table vec8 snap + custom JIT module builder. |
 
-## `triton_window/` — verification Triton kernel (w01–w07)
-A staged single-kernel reference used to validate the QK reduction rate:
-`w01_torch_ref/` (torch reference + window table) → `w02_triton_fwd/` →
-`w03_fulld_fastpath/` → `w04_merge_par/` → `w05_static_slice/` →
-`w06_level_loops/` → `w07_diag_split/`, each an `__init__.py` + `kernel.py`.
+## Notes
+
+The patch files are reproduced **exactly as measured** — the line counts and the
+binaries they produce are what the paper reports, so they are not tidied up.
+Comments inside them refer to modules of the development tree (`kernel_window/...`)
+that are not part of this release; those are provenance references, not
+dependencies. The window-rule code they point at lives here as
+`../atflash/window_table.py`.
+
+The reference implementation the ports were validated against is
+`../atflash/reference.py`; the acceptance tests are in `../gates/`.
 
 Source: 2026-07-17 RTX staging snapshot.

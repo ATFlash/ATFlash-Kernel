@@ -7,8 +7,14 @@ diagnostic probes that fixed the measurement protocol.
 |---|---|
 | `phasec_7b_prefill_mb.py` + `7b_prefill_mb.json` | The 4-series sweep behind the figure (stock FA4 / window / cuDNN / FlashInfer, 8K–512K) and its output. |
 | `remeasure_512k.py` | Reproduce the >512K quadratic degradation. |
-| `b1_bench_protocol.py`, `b1_correctness_w01.py` | B1 prefill sweep + w01 correctness. |
-| `fi_prefill_probe.py`, `chunked_attn_probe.py`, `cudnn_chunked_correct.py`, `fa4_strided_test.py` | Task-14 diagnostics that confirmed the SDPA `is_causal` top-left bug (the basis for using a bottom-right flash reference instead of cuDNN chunked prefill). |
+| `b1_bench_protocol.py`, `b1_correctness.py` | Prefill sweep, and the correctness check of the windowed path against `../atflash/reference.py`. |
+
+One measurement decision is worth recording, because it changes which baseline
+is legitimate: PyTorch SDPA's `is_causal=True` applies a **top-left** causal mask
+when the query length is shorter than the key length, which is the wrong mask for
+chunked prefill and makes that path look faster than it is. The baselines here
+therefore use a bottom-right causal reference (the flash-family convention), not
+cuDNN chunked prefill.
 
 `ports_fig/` holds the measurements the two-panel port-latency figure is drawn
 from, on the RTX PRO 6000 (sm120), Llama-3.2-3B:
