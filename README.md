@@ -111,7 +111,8 @@ Each directory carries its own `README.md` with file-by-file roles.
 just as importantly — what was not.**
 
 Everything derived from FlashAttention lives in the companion repository
-**`ATFlash-Kernel-FA4`**: the upstream tree at the pinned base with the window
+**[`ATFlash-Kernel-FA4`](https://github.com/ATFlash/ATFlash-Kernel-FA4)**: the
+upstream tree at the pinned base with the window
 applied commit by commit, plus the three window patches and their
 reconciliation ledger under `patches/`. The split is by license — that
 repository is BSD-3-Clause throughout (upstream's license), this one is purely
@@ -120,7 +121,9 @@ Apache-2.0. It is a standalone copy, not a fork, and sends nothing upstream.
 ## Using the ports
 
 **FA4 prefill.** Public FA2–FA4 wheels do not support sm_120; build from the
-companion repository `ATFlash-Kernel-FA4`, which is the upstream tree at the
+companion repository
+[`ATFlash-Kernel-FA4`](https://github.com/ATFlash/ATFlash-Kernel-FA4), which is
+the upstream tree at the
 pinned base with the window already applied (its `patches/` directory holds the
 raw diffs and the ledger mapping each to its measured number). Requires
 `nvidia-cutlass-dsl==4.2.0` and PyTorch ≥ 2.11. The window is opt-in through
