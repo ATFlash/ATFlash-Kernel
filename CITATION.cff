@@ -5,15 +5,6 @@ authors:
   - family-names: "Hayashi"
     given-names: "Shun-ichiro"
     affiliation: "Graduate School of Informatics, Nagoya University"
-  - family-names: "Mukunoki"
-    given-names: "Daichi"
-    affiliation: "Information Technology Center, Nagoya University"
-  - family-names: "Hoshino"
-    given-names: "Tetsuya"
-    affiliation: "Information Technology Center, Nagoya University"
-  - family-names: "Katagiri"
-    given-names: "Takahiro"
-    affiliation: "Information Technology Center, Nagoya University"
 preferred-citation:
   type: article
   title: "ATFlash: Per-RoPE-Wavelength Attention Windows for Compute/Memory-Efficient LLM Inference"

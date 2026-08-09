@@ -40,4 +40,4 @@ FlashInfer API but contains no upstream code.
 
 All other files — the window rule and tables, the torch reference, the gates,
 the benchmarks and harnesses, the figures and the documentation — are original
-work of the authors, under Apache-2.0.
+work of the copyright holder named in `NOTICE`, under Apache-2.0.
