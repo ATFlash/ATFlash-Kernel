@@ -20,13 +20,21 @@ Rotary position embeddings rotate each 2D frequency pair of `q` and `k` by
 `nθ_r` and `mθ_r`, so the pair's contribution to the score depends only on the
 relative angle `(n−m)θ_r` — position enters the score exactly, pair by pair.
 
-<p align="center"><img src="figs/fig_swa_perfreq_dense_v12.png" width="55%"></p>
+<p align="center"><img src="figs/pair_decomposition_en.png" width="60%"></p>
 
-The attention score under rotary position embeddings therefore decomposes
-**exactly** into a sum over its 2D-rotation frequency pairs, and each pair's
-wavelength `λ_r = 2π/θ_r` bounds how far that pair can discriminate position. ATFlash
-prunes the query–key inner-product terms of pair `r` beyond a
-wavelength-proportional distance `w_r = k·λ_r`:
+Over the same distance, how far each pair has rotated differs by orders of
+magnitude — 3.5 full turns at the highest frequency shown, a fraction of a turn
+at the lowest. Once a pair has completed `k` turns it can no longer
+discriminate position at that distance, so ATFlash sets exactly those terms to
+zero (gray: never computed, never loaded) and keeps the sum over the rest.
+
+<p align="center"><img src="figs/fig_swa_slide.png" width="60%"></p>
+
+Seen over the whole causal triangle (panel (b) above; color depth = the number
+of retained inner-product terms, and the lifted strip is the last query row
+split by frequency pair), this is a distance window per pair: ATFlash prunes
+the query–key inner-product terms of pair `r` beyond a wavelength-proportional
+distance `w_r = k·λ_r`:
 
 - **no token is dropped** — every key stays reachable through the low-frequency
   pairs, unlike a sliding window;
@@ -120,9 +128,14 @@ unrelated kernel idioms — a CuTeDSL kernel and a CUDA-template kernel — whic
 the evidence that the insertion is not tied to one codebase. For a third, you
 need `atflash/window_table.py` to produce the per-pair widths, the prefix length
 `D_eff` per key tile, and `atflash/reference.py` to check your output against.
-The figure below marks the one place the window enters an FA-style loop — the
-start of the pair reduction — and the memory side: out-of-window pair components
-are never loaded at all.
+Two figures carry the picture. The first shows the unit of work — one causal
+cell at distance `z = n−m` — and what ATFlash does inside it: start the pair
+loop at the window boundary `w`, nothing else.
+
+<p align="center"><img src="figs/atflash_withqk.png" width="85%"></p>
+
+The second marks the same insertion inside the full FA online-softmax loop —
+and the memory side: out-of-window pair components are never loaded at all.
 
 <p align="center"><img src="figs/fa_decode_i_only_v31.png" width="95%"></p>
 

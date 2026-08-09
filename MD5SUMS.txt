@@ -3,7 +3,7 @@
 7d721a0e9f899a975268bc92f06bccf3 *./CITATION.cff
 3b83ef96387f14655fc854ddc3c6bd57 *./LICENSE
 c002cbba450d28c2f9bea6297b77322a *./NOTICE
-7bf19320b52f245cf62eac79f2cd70c0 *./README.md
+9c74b255759aa223a77d05658da5cd6c *./README.md
 7b056eb2355c7ba10f16fa5388c867d9 *./SETUP.md
 676ca8d309b2a75843de3ed4a1f8748b *./THIRD_PARTY_NOTICES.md
 1bf8bce410d07b76b82f12343f977d97 *./VERIFICATION.md
@@ -23,9 +23,11 @@ d9330c2c7fa635ebe767f80e203530b2 *./e2e_pipeline/n6_1m/20260721_043911_phasec_1m
 7cb401dcad00c571c20ced23dc40a75a *./e2e_pipeline/n6_1m/N6_1M_DIGEST.txt
 6e8c45a88e6e02555329ec01c3f9ee16 *./e2e_pipeline/truncate_pool.py
 55d0bf58155e4fa308d745f3e51a0507 *./e2e_pipeline/truncate_pool_1m.py
+e16703ee91204dca3b7bce8f442f5e51 *./figs/atflash_withqk.png
 f88e4b3247b2c5785f4210e68dd4a2b7 *./figs/fa_decode_i_only_v31.png
 ddeec3c2592d4331bd0ac19a0b16eb53 *./figs/fig_llama_ports_v19.png
-247cc2425acb763a47fb5b27076b6e33 *./figs/fig_swa_perfreq_dense_v12.png
+94931380de3f14648310b47884081381 *./figs/fig_swa_slide.png
+093c8e920b389d1fe4f5337e665bcb65 *./figs/pair_decomposition_en.png
 1ee40b9e43bd431a1b52fbcdcf675764 *./figs/rope_rotation.png
 cf5d4995541e6f8a8b09d65a2141fd93 *./figs/saving_vs_N_v26.png
 05df944bec9846b8a27ddd2f7dc813e7 *./gates/README.md
