@@ -16,7 +16,7 @@ Taken from the run metadata in `microbench/7b_prefill_mb.json` and
 | GPU | NVIDIA RTX PRO 6000 Blackwell Workstation Edition, compute capability 12.0 (sm_120), 96 GB GDDR7 |
 | PyTorch / CUDA / cuDNN | 2.11.0+cu128 / 12.8 / 91900 |
 | FlashInfer | 0.6.13 (released wheel) |
-| FlashAttention-4 | built from source; upstream commit `5835c73` |
+| FlashAttention-4 | built from source at PR #2656 head `4f1fde1` (upstream squash-merged it as `5835c73` with minor review edits in `flash_fwd.py`; the prefill-window diff applies cleanly to both) |
 | Arithmetic | bf16 operands, TF32 off, batch 1 |
 | Window setting | `k_ret = 2.0` unless a row says otherwise |
 | Dates | prefill microbenchmark 2026-07-17; port latency runs 2026-07-16 to 07-19 |
@@ -36,7 +36,7 @@ public wheels for sm_120.
 | 5 | Prefill: the windowed kernel is the fastest of the four systems at every length from 8K to 512K on Qwen2.5-7B-1M. | Single-forward sweep, CUDA-event timing, median of 200 iterations, against stock FA4 / cuDNN / FlashInfer. | `microbench/phasec_7b_prefill_mb.py`, `microbench/7b_prefill_mb.json` |
 | 6 | Decode and prefill both beat their stock hosts on Llama-3.2-3B at 8K–160K, by margins that grow with context. | Per-call CUDA-event latency, same run for all series; the KV pool is sized past L2 so decode is not measuring cache residency. | `microbench/ports_fig/`, in particular `N128K_DIGEST.txt` |
 | 7 | End to end, prefill and decode ports compose into one pipeline and the whole-request time improves at 256K / 512K / 1M. | Window switched on and off inside the same binary, same documents truncated to each length, n=6 per length. | `e2e_pipeline/atflash_e2e_fafi.py`, `e2e_pipeline/n6_1m/`, `results_raw/summaries/` |
-| 8 | The gains are not an artifact of one kernel family. | The same insertion method was applied to two unrelated codebases (a CuTeDSL kernel and a CUDA-template kernel) and both recover a similar fraction of the predicted reduction. | `kernels/fa4_port/`, `kernels/flashinfer_port/` |
+| 8 | The gains are not an artifact of one kernel family. | The same insertion method was applied to two unrelated codebases (a CuTeDSL kernel and a CUDA-template kernel) and both recover a similar fraction of the predicted reduction. | `ATFlash-Kernel-FA4` (companion repo), `kernels/flashinfer_port/` |
 
 Output quality — divergence from full attention, top-1 agreement, and absolute
 benchmark scores — was measured separately, on GH200 and H100, and is reported
@@ -61,10 +61,11 @@ from the table above, and because each is a self-contained piece of work.
 
 ## A note on the patch files
 
-`kernels/fa4_port/*.patch` are reproduced exactly as measured, because the line
-counts and the resulting binaries are what the paper reports. Comments inside
-them refer to modules of the development tree (`kernel_window/...`) that are not
-part of this release; those references are provenance, not dependencies. The
-window-table code they refer to is `atflash/window_table.py` here, and its
-torch-free twin used to emit the tables is
-`window_tables/atflash_window_zhi_gen.py`.
+The FA4 window patches live in the companion repository `ATFlash-Kernel-FA4`
+(under `patches/`, applied commit by commit in its history) and are reproduced
+exactly as measured, because the line counts and the resulting binaries are
+what the paper reports. Comments inside them refer to modules of the
+development tree (`kernel_window/...`) that are not part of this release; those
+references are provenance, not dependencies. The window-table code they refer
+to is `atflash/window_table.py` here, and its torch-free twin used to emit the
+tables is `window_tables/atflash_window_zhi_gen.py`.

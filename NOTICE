@@ -7,19 +7,15 @@ This product includes software developed as part of the work described in
 LLM Inference" (arXiv:2608.02947).
 
 -------------------------------------------------------------------------------
-This product contains modifications to, and diffs against, third-party
-open-source projects. Those portions remain under their original licenses:
-
-  * FlashAttention (BSD-3-Clause)
-      kernels/fa4_port/fa4_cute_interface.py  -- modified copy of an upstream
-                                                 source file
-      kernels/fa4_port/*.patch                -- diffs against upstream
-      License: third_party/flash-attention/LICENSE
+This product contains diffs against a third-party open-source project. Those
+portions remain under the upstream license:
 
   * FlashInfer (Apache-2.0)
       kernels/flashinfer_port/*.diff          -- diffs against upstream
       License: third_party/flashinfer/LICENSE
       Upstream attribution notices: third_party/flashinfer/NOTICE
 
-See THIRD_PARTY_NOTICES.md for details. Neither upstream project is
+FlashAttention-derived material (BSD-3-Clause) is not part of this repository;
+it lives in the companion repository ATFlash-Kernel-FA4 under upstream's own
+license. See THIRD_PARTY_NOTICES.md for details. Neither upstream project is
 affiliated with, nor endorses, these modifications.

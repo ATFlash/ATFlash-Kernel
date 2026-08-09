@@ -10,25 +10,13 @@ modifications in this repository. Bugs in the modified paths are ours, not
 theirs. The upstream authors' names are used only to satisfy the attribution
 requirements of their licenses.
 
-## FlashAttention — BSD-3-Clause
+## FlashAttention — moved to the companion repository
 
-- Upstream: https://github.com/Dao-AILab/flash-attention
-- Base commit for all diffs here: `5835c73`
-- License text: [`third_party/flash-attention/LICENSE`](third_party/flash-attention/LICENSE)
-- Upstream authors: [`third_party/flash-attention/AUTHORS`](third_party/flash-attention/AUTHORS)
-
-Affected files:
-
-| file | relationship to upstream |
-|---|---|
-| `kernels/fa4_port/fa4_cute_interface.py` | Modified copy of an upstream source file. Retains the upstream per-file copyright header. |
-| `kernels/fa4_port/fa4_prefill_window_PAPER_296.patch` | Diff against upstream (123 lines of upstream context). |
-| `kernels/fa4_port/fa4_prefill_window_MEASURED_bc21b79.patch` | Diff against upstream (123 lines of upstream context). |
-| `kernels/fa4_port/fa4_full_window_HEAD.patch` | Diff against upstream (208 lines of upstream context). |
-
-BSD-3-Clause clause 3 forbids using the upstream authors' names to endorse or
-promote products derived from their software; this repository makes no such
-claim of endorsement.
+This repository contains **no FlashAttention-derived code**. Everything derived
+from FlashAttention (BSD-3-Clause) — the window patches, their reconciliation
+ledger, and the upstream tree with the window applied — lives in the companion
+repository `ATFlash-Kernel-FA4`, under upstream's own license, so that this
+repository is purely Apache-2.0.
 
 ## FlashInfer — Apache-2.0
 

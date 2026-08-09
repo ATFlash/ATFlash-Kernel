@@ -67,7 +67,6 @@ accuracy and compute.
 | dir | contents |
 |---|---|
 | `atflash/` | The method itself: the window rule (`window_table.py`) and a readable torch reference (`reference.py`). Start here. |
-| `kernels/fa4_port/` | The FA4 prefill window as patches against upstream commit `5835c73`, plus the patched CuTe interface. |
 | `kernels/flashinfer_port/` | The FlashInfer 0.6.13 decode window as unified diffs, plus the JIT/shadow-copy helper. |
 | `window_tables/` | The torch-free table generator, and the exact per-model tables used in every run. |
 | `gates/` | Bit-identity and neutrality gates (window OFF == stock; chunked == single-shot). |
@@ -80,19 +79,21 @@ Each directory carries its own `README.md` with file-by-file roles.
 `VERIFICATION.md` records what was actually measured, on what hardware, and —
 just as importantly — what was not.**
 
-A companion repository, **`ATFlash-Kernel-FA4`**, carries the FlashAttention-4
-tree at the pinned commit with these patches already applied — for building
-directly instead of patching. It is a standalone copy, not a fork, and sends
-nothing upstream.
+Everything derived from FlashAttention lives in the companion repository
+**`ATFlash-Kernel-FA4`**: the upstream tree at the pinned base with the window
+applied commit by commit, plus the three window patches and their
+reconciliation ledger under `patches/`. The split is by license — that
+repository is BSD-3-Clause throughout (upstream's license), this one is purely
+Apache-2.0. It is a standalone copy, not a fork, and sends nothing upstream.
 
 ## Using the ports
 
-**FA4 prefill.** Public FA2–FA4 wheels do not support sm_120; build
-FlashAttention-4 from source at upstream commit `5835c73`, then apply
-`kernels/fa4_port/fa4_full_window_HEAD.patch` (or the prefill-only variants —
-see `FA4_PATCH_RECONCILIATION.md` for which patch corresponds to which measured
-number). Requires `nvidia-cutlass-dsl==4.2.0` and PyTorch ≥ 2.11. The window is
-opt-in through the interface; without a window table the code path is stock.
+**FA4 prefill.** Public FA2–FA4 wheels do not support sm_120; build from the
+companion repository `ATFlash-Kernel-FA4`, which is the upstream tree at the
+pinned base with the window already applied (its `patches/` directory holds the
+raw diffs and the ledger mapping each to its measured number). Requires
+`nvidia-cutlass-dsl==4.2.0` and PyTorch ≥ 2.11. The window is opt-in through
+the interface; without a window table the code path is stock.
 
 **FlashInfer decode.** Start from the released FlashInfer 0.6.13 wheel, apply
 `kernels/flashinfer_port/*.diff` as a shadow copy, and point `PYTHONPATH` +
@@ -130,14 +131,12 @@ re-run.
 
 ## License
 
-Apache-2.0 (`LICENSE`, `NOTICE`).
-
-Two parts are derived from other projects and keep their original licenses:
-`kernels/fa4_port/` from FlashAttention (BSD-3-Clause) and
-`kernels/flashinfer_port/*.diff` from FlashInfer (Apache-2.0). Full texts are
-under `third_party/`; the file-by-file breakdown is in
-`THIRD_PARTY_NOTICES.md`. Neither upstream project is affiliated with or
-endorses these modifications.
+Apache-2.0 throughout (`LICENSE`, `NOTICE`). The only third-party-derived
+files here are `kernels/flashinfer_port/*.diff`, from FlashInfer — itself
+Apache-2.0; its license and NOTICE are carried under `third_party/`. All
+FlashAttention-derived material (BSD-3-Clause) lives in `ATFlash-Kernel-FA4`.
+Details in `THIRD_PARTY_NOTICES.md`. Neither upstream project is affiliated
+with or endorses these modifications.
 
 ## Citation
 

@@ -20,25 +20,24 @@ placeholders — point them at your checkout.
 
 ## 1. FA4 prefill port
 
-The public FA2–FA4 wheels do not cover sm_120, so FlashAttention-4 is built from
-source at the pinned upstream commit, then patched:
+The public FA2–FA4 wheels do not cover sm_120, so FlashAttention-4 is built
+from source. Use the companion repository, which is the upstream tree at the
+pinned base with the window already applied:
 
 ```bash
-git clone https://github.com/Dao-AILab/flash-attention
-cd flash-attention
-git checkout 5835c73
-git apply /path/to/kernels/fa4_port/fa4_full_window_HEAD.patch
+git clone https://github.com/ATFlash/ATFlash-Kernel-FA4
+cd ATFlash-Kernel-FA4
 pip install -e .   # CuTeDSL path: python-only, no C++ compilation at install
 ```
 
-Which patch to choose: `fa4_full_window_HEAD.patch` for the complete port
-(prefill + decode split-KV, the binary of the microbenchmark and e2e runs);
-the two `fa4_prefill_window_*` variants exist to make the paper's "+296/−13"
-auditable — see `kernels/fa4_port/FA4_PATCH_RECONCILIATION.md`.
+The raw diffs live in that repository's `patches/` directory; its
+`patches/FA4_PATCH_RECONCILIATION.md` maps each patch to its measured number
+(the paper's "+296/−13", the measured binary's "+308/−13", and the full port).
+Its git history applies them one commit per step, so `git diff` between
+commits shows exactly what the window adds.
 
 The window is opt-in: without the `atflash_window_zhi` argument the code path
-is stock. A ready-to-build tree with these patches already applied is published
-alongside this repository (`ATFlash-Kernel-FA4`).
+is stock.
 
 ## 2. FlashInfer decode port
 
