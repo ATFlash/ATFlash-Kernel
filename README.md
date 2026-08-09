@@ -38,6 +38,14 @@ wavelength-proportional distance `w_r = k·λ_r`:
   ports into released kernels as a small diff, and why the out-of-window pair
   components are never even loaded into SRAM.
 
+<p align="center"><img src="figs/fig_casesplit_annotated.png" width="60%"></p>
+
+The hardware shape this produces: near the causal diagonal every pair is
+active, so those tiles stay dense — exactly what Tensor Cores want — while far
+cells keep only the low-frequency prefix of the reduction. The staircase at the
+bottom counts the active terms per distance (Qwen2.5-0.5B, k=2, N=32K: from all
+32 near the diagonal down to 13 at the far end).
+
 <p align="center"><img src="figs/saving_vs_N_v26.png" width="70%"></p>
 
 ## Measured speed (RTX PRO 6000, 96 GB GDDR7)
@@ -120,9 +128,16 @@ unrelated kernel idioms — a CuTeDSL kernel and a CUDA-template kernel — whic
 the evidence that the insertion is not tied to one codebase. For a third, you
 need `atflash/window_table.py` to produce the per-pair widths, the prefix length
 `D_eff` per key tile, and `atflash/reference.py` to check your output against.
-The figure below marks the one place the window enters an FA-style loop — the
-start of the pair reduction — and the memory side: out-of-window pair components
-are never loaded at all.
+Two figures carry the whole porting picture. The first is the scan structure:
+the score of each causal cell is a sum over frequency pairs (inner axis
+`θ_r`), and the window is a per-distance truncation of that inner axis (outer
+axis `z`):
+
+<p align="center"><img src="figs/overview.png" width="70%"></p>
+
+The second marks the one place the window enters an FA-style loop — the start
+of the pair reduction — and the memory side: out-of-window pair components are
+never loaded at all.
 
 <p align="center"><img src="figs/fa_decode_i_only_v31.png" width="95%"></p>
 
