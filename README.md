@@ -14,6 +14,12 @@ Inference*. Section references (§) below follow the paper.
 
 ## The idea
 
+<p align="center"><img src="figs/attention_zoom_panel_en.png" width="75%"></p>
+
+Zoom into one cell of the attention score matrix: it is a `d`-dimensional dot
+product, and under RoPE it is computed two dimensions at a time — rotate the
+pair, then add.
+
 <p align="center"><img src="figs/rope_rotation.png" width="70%"></p>
 
 Rotary position embeddings rotate each 2D frequency pair of `q` and `k` by
@@ -27,6 +33,13 @@ magnitude — 3.5 full turns at the highest frequency shown, a fraction of a tur
 at the lowest. Once a pair has completed `k` turns it can no longer
 discriminate position at that distance, so ATFlash sets exactly those terms to
 zero (gray: never computed, never loaded) and keeps the sum over the rest.
+
+<p align="center"><img src="figs/SramMacroCut.png" width="45%"></p>
+
+On the memory side this is a prefix rule: when a `q` row and a `K^T` column are
+read for one cell, the gray out-of-window prefix is simply never read — the
+rotation `RoPE(z)` is fused at load, and only the surviving dimensions enter
+SRAM.
 
 <p align="center"><img src="figs/fig_swa_slide.png" width="60%"></p>
 
@@ -47,6 +60,10 @@ distance `w_r = k·λ_r`:
   components are never even loaded into SRAM.
 
 <p align="center"><img src="figs/saving_vs_N_v26.png" width="70%"></p>
+
+Vertical axis: share of QK^T inner-product terms pruned (higher = more compute
+and K-traffic saved); dotted segments are extrapolated beyond each model's
+verified range.
 
 ## Measured speed (RTX PRO 6000, 96 GB GDDR7)
 
@@ -128,16 +145,18 @@ unrelated kernel idioms — a CuTeDSL kernel and a CUDA-template kernel — whic
 the evidence that the insertion is not tied to one codebase. For a third, you
 need `atflash/window_table.py` to produce the per-pair widths, the prefix length
 `D_eff` per key tile, and `atflash/reference.py` to check your output against.
-Two figures carry the picture. The first shows the unit of work — one causal
-cell at distance `z = n−m` — and what ATFlash does inside it: start the pair
-loop at the window boundary `w`, nothing else.
+One figure carries the whole picture — the nesting that makes the port small:
+attention's two loops over query `n` and key `m`, and inside them the pair loop
+over `r`, which is where ATFlash starts the reduction at the window boundary
+`w`. Everything to the right of the arrow is the port; the memory side shows
+the gray out-of-window prefix never entering SRAM, with `RoPE(z)` fused at
+load.
 
-<p align="center"><img src="figs/atflash_withqk.png" width="85%"></p>
+<p align="center"><img src="figs/atflash_impl_full.png" width="100%"></p>
 
-The second marks the same insertion inside the full FA online-softmax loop —
-and the memory side: out-of-window pair components are never loaded at all.
-
-<p align="center"><img src="figs/fa_decode_i_only_v31.png" width="95%"></p>
+(The full FlashAttention online-softmax loop with the same insertion marked —
+including the running max, normalizer and PV accumulation — is in the
+companion repository `ATFlash-Kernel-FA4`, next to the code it explains.)
 
 ## Scope and portability
 
