@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Phase C / C0 gate (要件): chunked prefill が中立=単発と一致することを
-**harness 経路**(HF use_cache の position 処理込み)で 262k・窓OFF/ON(k=2) 両方で確認。
-窓述語は絶対距離 z=n-m 依存ゆえ、chunk 跨ぎの位置オフセット誤りは OFF では出ず ON で
-だけ壊れる → 両方一致で初めて chunked 化が中立。単発が可能な 262k で実施。GPU."""
+"""C0 gate: chunked prefill must be neutral, i.e. match single-shot prefill,
+through the **harness path** (including HF use_cache position handling), at 262K
+with the window OFF and ON (k=2). The window predicate depends on the absolute
+distance z=n-m, so a position-offset bug across chunk boundaries would be
+invisible with the window OFF and break only with it ON -- both must match
+before chunking counts as neutral. Run at 262K, where single-shot is still
+possible. Requires a GPU."""
 import os
 import sys
 

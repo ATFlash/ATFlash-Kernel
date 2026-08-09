@@ -4,7 +4,7 @@
 One process runs FA4-cute prefill THEN patched-FlashInfer decode on ONE shared
 NHD KV buffer. Gate: window-OFF integrated path == stock kernels (bit-identical).
 Also probes: FA4 on a strided (non-contiguous) BSHD view (HF-cache-reuse path),
-and generation of the 素基数(raw-base) zhi tables for both kernels (16- & 8-snap).
+and generation of the raw-base zhi tables for both kernels (16- & 8-snap).
 llama dims (GQA group 3). bf16, batch=1.
 """
 import hashlib
@@ -83,13 +83,13 @@ dec_ok = torch.equal(o_dec_off, o_dec_stock)
 print(f"\n[FI decode] custom-OFF sha={sha(o_dec_off)} stock sha={sha(o_dec_stock)} "
       f"bit-equal: {dec_ok}")
 
-# ---- window ON sanity: 素基数 zhi runs and changes output ----
+# ---- window ON sanity: the raw-base zhi runs and changes the output ----
 zs8 = zhi_slice_vec8(d, base, k_ret)          # FI 8-snap from raw base
 o_dec_on = run_atfwin(mod, q_dec, kbuf, vbuf, zhi_slice=zs8)
 zhi16 = window_zhi_from_kret(d, base, k_ret, N)  # FA4 16-snap from same raw base
 print(f"[FI decode] WIN-ON sha={sha(o_dec_on)} differs-from-OFF: {not torch.equal(o_dec_on, o_dec_off)}")
-print(f"[素基数 zhi] FA4 16-snap={list(zhi16)}")
-print(f"[素基数 zhi] FI  8-snap={zs8.tolist()}")
+print(f"[raw-base zhi] FA4 16-snap={list(zhi16)}")
+print(f"[raw-base zhi] FI  8-snap={zs8.tolist()}")
 
 gate = prefill_ok and dec_ok
 print(f"\nB0_GATE {'PASS' if gate else 'FAIL'} "

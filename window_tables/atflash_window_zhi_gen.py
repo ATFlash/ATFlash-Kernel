@@ -31,7 +31,7 @@ wavelength-sorted pair layout described above, so that the active set at any dis
 is a dim-PREFIX.
 
 fp32 semantics note: the Triton reference compares fp32 wvec against fp32 z inside the
-kernel and uses the same comparison on the host (w06 "kernel と同一の fp32 比較
+kernel and uses the same comparison on the host (w06: "the same fp32 comparison
 semantics"). Here wvec entries are rounded to fp32 via struct packing, and z is an
 integer < 2**24, hence exactly representable in fp32 -- the Python float (fp64)
 comparison `wvec_f32 >= z` is then bit-equivalent to the fp32 comparison.

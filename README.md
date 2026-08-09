@@ -76,8 +76,14 @@ accuracy and compute.
 | `results_raw/` | Raw run summaries behind the speed tables. |
 
 Each directory carries its own `README.md` with file-by-file roles.
-**`VERIFICATION.md` records what was actually measured, on what hardware, and —
+**`SETUP.md` walks through building both ports and reproducing the numbers;
+`VERIFICATION.md` records what was actually measured, on what hardware, and —
 just as importantly — what was not.**
+
+A companion repository, **`ATFlash-Kernel-FA4`**, carries the FlashAttention-4
+tree at the pinned commit with these patches already applied — for building
+directly instead of patching. It is a standalone copy, not a fork, and sends
+nothing upstream.
 
 ## Using the ports
 

@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*-
-"""ATFlash 併用 e2e (Phase B): FA4 移植 prefill + FlashInfer 移植 decode を HF
-transformers に統合し、実ベンチ実物プロンプト(shared/data/)で exact(SDPA) vs
-windowed の品質×速度を全リクエスト(prefill+decode)で実測する。
+"""End-to-end harness: FA4-port prefill + FlashInfer-port decode inside HF
+transformers, measuring exact (SDPA) vs windowed quality and speed over the
+whole request (prefill + decode) on real benchmark prompts (shared/data/).
 
-- 統合: AttentionInterface("atf_window") + apply_rotary_pos_emb patch。RoPE 直後に
-  q/k の head-dim を波長降順 pair layout (pair j -> dims 2j,2j+1) へ permute。cache
-  には permute 済み K が入る。prefill=FA4(BSHD view), decode=FlashInfer(HND view)。
-- 窓表: 幅 = 素基数(スケーリング前 RoPE base)由来 zhi == 公表
-  ベンチ(FA4 sweep7 / FI 20260715)と同一表。並び(permute) = 実 inv_freq の argsort。
-  argsort が raw canonical と一致しなければ SystemExit(STOP)。FA4=16snap, FI=8snap。
-- MODE: exact = F.sdpa(enable_gqa) / win = 窓 ON / nowin = 窓 OFF
-  (アンカー: 窓 OFF は exact と数値近似一致・stock kernel と bit 一致 [B0])。
+- Integration: AttentionInterface("atf_window") + an apply_rotary_pos_emb patch.
+  Right after RoPE, the head-dim of q/k is permuted into descending-wavelength
+  pair layout (pair j -> dims 2j,2j+1); the cache holds the permuted K.
+  prefill = FA4 (BSHD view), decode = FlashInfer (HND view).
+- Window tables: WIDTHS come from the raw (pre-scaling) RoPE base, i.e. the same
+  zhi tables as the published benches (FA4 sweep7 / FI 20260715). ORDER (the
+  permute) comes from the model's real inv_freq argsort; if that argsort does
+  not match the raw canonical order the run stops with SystemExit before
+  measuring. Snap granularity: FA4 = 16 dims, FI = 8 dims.
+- MODE: exact = F.sdpa(enable_gqa) / win = window ON / nowin = window OFF
+  (anchor: window OFF matches exact numerically and is bit-identical to the
+  stock kernel [gate B0]).
 """
 import argparse
 import datetime
@@ -35,9 +39,9 @@ from torch.nn.attention import SDPBackend, sdpa_kernel
 
 from atflash import window_table as WT
 
-# --- agentB Phase B: FA4 (prefill) + FlashInfer (decode) ports ---------------
-# window WIDTH = 素基数 (raw pre-scaling RoPE base) zhi table == published benches
-# (FA4 sweep7 / FI 20260715); window ORDER = harness の実 permute (real inv_freq).
+# --- FA4 (prefill) + FlashInfer (decode) ports -------------------------------
+# window WIDTH = raw (pre-scaling) RoPE base zhi table == published benches
+# (FA4 sweep7 / FI 20260715); window ORDER = the harness permute (real inv_freq).
 sys.path.insert(0, "/home/USER/atflash/agents/agentB/fiwin/scripts")
 sys.path.insert(0, "/home/USER/atflash/agents/agentA/fa-b1/flash_attn/cute")
 from flash_attn.cute.interface import _flash_attn_fwd
@@ -48,13 +52,14 @@ from atflash_window import window_zhi_from_kret, wavelengths_sorted
 
 DATA = "/home/USER/atflash/shared/data"
 RESULTS = "/home/USER/atflash/shared/results"
-WIN_ZHI_CAP = 1_100_000  # FA4 zhi n_ctx cap: must be >= max causal diag。1M系列
-# (Qwen 7B-1M max_pos 1,010,000) を覆う。cap<N だと長波長 slice を誤って不活性化。
-# llama 128k でも cap>>N ゆえ影響なし（zhi は 0 で clamp）。
+WIN_ZHI_CAP = 1_100_000  # FA4 zhi n_ctx cap: must be >= the max causal diagonal.
+# Covers the 1M series (Qwen 7B-1M max_pos 1,010,000). With cap<N the
+# long-wavelength slices would be wrongly deactivated; for llama at 128K
+# cap>>N so there is no effect (zhi clamps at 0).
 LB_FILE = f"{DATA}/longbench_v2_sample/sample.jsonl"  # overridable via --lb-file
 
 MODE = {"mode": "exact"}
-PREFILL_CHUNK = {"v": None}  # chunked prefill 長 (None=単発); --prefill-chunk で設定
+PREFILL_CHUNK = {"v": None}  # chunked-prefill length (None = single shot); set via --prefill-chunk
 NULL_PASS = dict(tokens=[], prefill_ms=0.0, step_ms=[], wall_s=0.0, logits=[],
                  peak_alloc=0, free_before=0, free_after=0, stopped_by_text=False)
 STATE = {}  # perm, fa_zhi (tuple), fi_zhi8 (cuda int32), fi_mod, sm_scale, head_dim
@@ -64,7 +69,7 @@ MODELS = {
     "llama": "unsloth/Llama-3.2-3B",
     "qwen7b1m": "Qwen/Qwen2.5-7B-Instruct-1M",  # Phase C: base 1e7, GQA g7, d128
 }
-PREFILL_CFG = {  # W3 掃引の勝ち構成 (ChangeLog 23:20:58Z)
+PREFILL_CFG = {  # winning configuration of the W3 sweep
     64: dict(block_m=128, block_n=64, block_d=16, num_warps=4, num_stages=2),
     128: dict(block_m=64, block_n=64, block_d=32, num_warps=4, num_stages=2),
 }
@@ -91,7 +96,7 @@ def atflash_attention(module, query, key, value, attention_mask,
                 scale=scaling)
         return out.transpose(1, 2).contiguous(), None
     windowed = (mode == "win")
-    # query/key/value are HF BHSD: q=[b,hq,L,d], k/v=[b,hkv,S,d] (permute 済み).
+    # query/key/value are HF BHSD: q=[b,hq,L,d], k/v=[b,hkv,S,d] (already permuted).
     if L == 1:
         # FlashInfer decode: q=[hq,d], KV=HND [hkv,S,d] (=key[0], zero-copy view).
         q_fi = query[0, :, 0, :]                    # [hq, d]
@@ -104,8 +109,9 @@ def atflash_attention(module, query, key, value, attention_mask,
             kv_layout="HND")                        # [hq, d]
         return o.view(1, 1, o.shape[0], o.shape[1]), None
     assert L <= S, f"L>S invalid: L={L} S={S}"  # L<S = chunked/continued prefill
-    # FA4 prefill: BSHD views (strided accepted, verified B0). q_chunk が全 KV を
-    # bottom-right causal で見る = full prefill と bit 一致（Phase C 検証済）。out=[b,L,hq,d]。
+    # FA4 prefill: BSHD views (strided accepted, verified by gate B0). The q chunk
+    # sees the whole KV under a bottom-right causal mask, which is bit-identical
+    # to full prefill (verified by gate C0). out=[b,L,hq,d].
     q_fa = query.transpose(1, 2)                    # [b,L,hq,d]
     k_fa = key.transpose(1, 2)                      # [b,S,hkv,d]
     v_fa = value.transpose(1, 2)
@@ -118,9 +124,10 @@ def setup_model(model_key, k_ret_prefill, k_ret_decode):
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from transformers.modeling_utils import AttentionInterface
 
-    # 注意: transformers v5 は実装名に "flash" を含むと FA hub kernel 経路へ
-    # 強制ルーティングする (utils/generic.py is_flash_attention_requested:
-    # `"flash" in name`)。よってキーは "atf_window" (flash 非含有) にする。
+    # Caution: transformers v5 force-routes any attn implementation whose name
+    # contains "flash" through the FA hub-kernel path (utils/generic.py,
+    # is_flash_attention_requested: `"flash" in name`). Hence the key is
+    # "atf_window", which does not contain "flash".
     AttentionInterface.register("atf_window", atflash_attention)
     mid = MODELS[model_key]
     tok = AutoTokenizer.from_pretrained(mid)
@@ -128,19 +135,20 @@ def setup_model(model_key, k_ret_prefill, k_ret_decode):
         mid, dtype=torch.bfloat16, attn_implementation="atf_window")
     model = model.to("cuda").eval()
 
-    # ORDER (permute): from the model's REAL inv_freq (rope_scaling 込み).
+    # ORDER (permute): from the model's REAL inv_freq (rope_scaling included).
     inv = model.model.rotary_emb.inv_freq.detach().float().cpu()  # [P] real
     P = inv.shape[0]
     d = 2 * P
     lam = 2.0 * math.pi / inv                       # real wavelengths (incr in r)
     wl_sorted, order = torch.sort(lam, descending=True)  # j=0 longest
-    # 幅と並びの分離: argsort(real) が canonical raw 順(r 降順)と一致する
-    # ことを確認。破綻すれば素基数幅の j 番目が別ペアに当たる -> 計測前 STOP。
+    # Width/order separation: assert that argsort(real) equals the canonical raw
+    # order (descending r). If it does not, the j-th raw-base width would land on
+    # a different pair, so stop before measuring anything.
     canonical = torch.arange(P - 1, -1, -1, dtype=order.dtype)
     if not torch.equal(order, canonical):
         raise SystemExit(
-            "STOP: real inv_freq argsort != raw canonical order; width/order "
-            f"分離が構造的に破綻. order[:8]={order[:8].tolist()} "
+            "STOP: real inv_freq argsort != raw canonical order; the width/order "
+            f"separation breaks down. order[:8]={order[:8].tolist()} "
             f"canonical[:8]={canonical[:8].tolist()}")
     perm = torch.empty(d, dtype=torch.long)
     perm[0::2] = order                              # cos component (HF dim r)
@@ -148,12 +156,13 @@ def setup_model(model_key, k_ret_prefill, k_ret_decode):
     STATE["perm"] = perm.cuda()
     STATE["prefill_cfg"] = PREFILL_CFG[d]           # metadata only (FA4 self-tiles)
     STATE["head_dim"] = d
-    # WIDTH: 素基数 (スケーリング前 RoPE base) 由来 == 公表ベンチと同一表。
+    # WIDTH: from the raw (pre-scaling) RoPE base == the published benches' tables.
     raw_base = float(getattr(model.config, "rope_theta", None)
                      or (getattr(model.config, "rope_scaling", None) or {}
                          ).get("rope_theta"))
     STATE["raw_base"] = raw_base
-    # 幅=素基数、k は prefill/decode 独立ダイヤル。並び(permute)は共通(実 inv_freq)。
+    # Widths use the raw base; k is an independent dial for prefill vs decode.
+    # The order (permute) is shared and comes from the real inv_freq.
     STATE["k_ret_prefill"] = float(k_ret_prefill)
     STATE["k_ret_decode"] = float(k_ret_decode)
     STATE["fa_zhi"] = window_zhi_from_kret(
@@ -190,11 +199,12 @@ def setup_model(model_key, k_ret_prefill, k_ret_decode):
 @torch.inference_mode()
 def run_pass(model, ids, mode, max_new, eos_ids, forced=None, stop_strs=None,
              tok=None, collect_logits=True, prefill_chunk=None):
-    """1 pass = prefill + greedy/forced decode。ids: (1, L) cuda long。
-    返り値 dict: tokens, prefill_ms, step_ms[], wall_s, logits(list of cpu fp32),
-    peak_alloc, free_before/after。
-    collect_logits=False = 計時run: per-step の全語彙 logits.cpu() 同期を行わない
-    (greedy の argmax→int スカラ同期のみ)。wall_s から同期ノイズを排除。"""
+    """One pass = prefill + greedy/forced decode. ids: (1, L) cuda long.
+    Returns a dict: tokens, prefill_ms, step_ms[], wall_s, logits (list of cpu
+    fp32), peak_alloc, free_before/after.
+    collect_logits=False marks a timing run: the per-step full-vocab logits.cpu()
+    sync is skipped (only greedy's argmax->int scalar sync remains), which keeps
+    synchronization noise out of wall_s."""
     MODE["mode"] = mode
     torch.cuda.synchronize()
     torch.cuda.reset_peak_memory_stats()
@@ -204,7 +214,7 @@ def run_pass(model, ids, mode, max_new, eos_ids, forced=None, stop_strs=None,
     wall0 = time.perf_counter()
     e0.record()
     Lp = ids.shape[1]
-    ch = prefill_chunk or PREFILL_CHUNK["v"] or Lp  # 1M系列は chunk で活性化抑制
+    ch = prefill_chunk or PREFILL_CHUNK["v"] or Lp  # the 1M series chunks to bound activations
     cache = None
     for cs in range(0, Lp, ch):
         out = model(input_ids=ids[:, cs:min(cs + ch, Lp)], use_cache=True,
@@ -256,7 +266,7 @@ def run_pass(model, ids, mode, max_new, eos_ids, forced=None, stop_strs=None,
 
 
 def kl_top1(logits_e, logits_w):
-    """per-step KL(P_e||P_w) (natural log, 全vocab) と top1。CPU fp32。"""
+    """Per-step KL(P_e||P_w) (natural log, full vocab) and top-1. CPU fp32."""
     T = min(len(logits_e), len(logits_w))
     kls, t1e, t1w = [], [], []
     for i in range(T):
@@ -273,7 +283,7 @@ def kl_top1(logits_e, logits_w):
 
 
 def nll_of(logits, tokens):
-    """teacher-forced NLL: logits[i] は tokens[i] を予測する分布。"""
+    """Teacher-forced NLL: logits[i] is the distribution predicting tokens[i]."""
     T = min(len(logits), len(tokens))
     out = []
     for i in range(T):
@@ -340,7 +350,7 @@ def ruler_judge(pred_text, gold, judge):
     return max(hits) if judge == "ruler_part" else sum(hits) / len(hits)
 
 
-LB_TEMPLATE = (  # LongBench-v2 公式 0shot プロンプト構造 (THUDM/LongBench-v2)
+LB_TEMPLATE = (  # LongBench-v2 official 0-shot prompt structure (THUDM/LongBench-v2)
     "Please read the following text and answer the question below.\n\n"
     "<text>\n{context}\n</text>\n\n"
     "What is the correct answer to this question: {question}\n"
@@ -354,13 +364,13 @@ def load_longbench(tok, ctx_cap, n_items=6, skip=0, long_only=False,
                    max_new=32):
     rows = [json.loads(l) for l in
             open(LB_FILE, encoding="utf-8")]
-    if long_only:  # 64k/128k 級: length=long の実物のみ (中央切詰めで cap へ)
+    if long_only:  # 64K/128K bands: only genuine length=long docs (center-truncated to cap)
         rows = [r for r in rows if r.get("length") == "long"]
     rows = rows[skip:skip + n_items]
     items = []
     for r in rows:
         enc = tok(r["context"], add_special_tokens=False).input_ids
-        if len(enc) > ctx_cap:  # 中央切詰め (LongBench 流儀)
+        if len(enc) > ctx_cap:  # center truncation (the LongBench convention)
             half = ctx_cap // 2
             ctx = (tok.decode(enc[:half]) + "\n...[truncated]...\n"
                    + tok.decode(enc[-half:]))
@@ -399,23 +409,26 @@ def main():
     ap.add_argument("--ctx-cap", type=int, default=8000)
     ap.add_argument("--lb-skip", type=int, default=0)
     ap.add_argument("--lb-file", default=None,
-                    help="LongBench jsonl override (既定=sample.jsonl)")
+                    help="LongBench jsonl override (default: sample.jsonl)")
     ap.add_argument("--lb-long-only", action="store_true")
     ap.add_argument("--lb-max-new", type=int, default=32)
     ap.add_argument("--k-ret", type=float, default=2.0)
     ap.add_argument("--k-ret-prefill", type=float, default=None,
-                    help="prefill(FA4) 窓 k; 既定=--k-ret")
+                    help="window k for prefill (FA4); default: --k-ret")
     ap.add_argument("--k-ret-decode", type=float, default=None,
-                    help="decode(FI) 窓 k; 既定=--k-ret")
+                    help="window k for decode (FlashInfer); default: --k-ret")
     ap.add_argument("--timing-only", action="store_true",
-                    help="計時run: per-step logits採取なし(wall から同期ノイズ排除)。"
-                         "品質(top1/ppl/KL)は採取しない")
+                    help="timing run: skip per-step logits collection (keeps sync "
+                         "noise out of wall time); quality (top1/ppl/KL) is not "
+                         "collected")
     ap.add_argument("--prefill-chunk", type=int, default=None,
-                    help="chunked prefill 長(tokens)。1M系列で活性化を抑制。"
-                         "None=単発。移植不変・full prefill と bit 一致(Phase C検証済)")
+                    help="chunked-prefill length in tokens (None = single shot). "
+                         "Used by the 1M series to bound activations. Leaves the "
+                         "ports untouched and is bit-identical to full prefill "
+                         "(verified by gate C0)")
     ap.add_argument("--no-cudnn", action="store_true",
-                    help="外部参照 SDPA cuDNN pass を省く(1M で OOM/低速回避)。"
-                         "cudnn 系フィールドは 0/None")
+                    help="skip the external-reference SDPA cuDNN pass (avoids OOM "
+                         "and slowness at 1M); cudnn fields become 0/None")
     ap.add_argument("--smoke", action="store_true",
                     help="2 items + nowin anchor pass")
     ap.add_argument("--full-logits-items", type=int, default=1)
@@ -442,8 +455,9 @@ def main():
         model.config.eos_token_id, int) else set(model.config.eos_token_id)
 
     if args.bench == "floor":
-        # KL floor 較正 (agentB 依頼): 代表 prompt で exact_cudnn(再) /
-        # exact_flash / nowin / win を exact_cudnn 基準に teacher-forced 比較。
+        # KL floor calibration: on representative prompts, compare exact_cudnn
+        # (re-run) / exact_flash / nowin / win teacher-forced against the
+        # exact_cudnn baseline.
         g_it, g_cfg = load_gsm8k(n_items=1)
         g_cfg = dict(g_cfg, max_new=128)
         groups = [("floor_gsm8k0", g_it, g_cfg)]
@@ -483,7 +497,8 @@ def main():
         k_ret=args.k_ret, k_ret_prefill=STATE["k_ret_prefill"],
         k_ret_decode=STATE["k_ret_decode"], prefill_cfg=STATE["prefill_cfg"],
         decode_cfg=DECODE_CFG, raw_base=STATE["raw_base"],
-        wvec_from="WIDTH=素基数 raw_base(公表ベンチ同一) / ORDER=real inv_freq permute",
+        wvec_from="WIDTH=raw_base (same tables as published benches) / "
+                  "ORDER=real inv_freq permute",
         wvec_head=STATE["wvec_cpu"][:4].tolist(),
         wvec_tail=STATE["wvec_cpu"][-4:].tolist(),
         head_dim=STATE["head_dim"],
@@ -497,7 +512,7 @@ def main():
         stream.write(json.dumps(rec) + "\n")
         stream.flush()
 
-    # --- warmup (JIT compile + cudnn autotune; 記録は warmup 印) ---
+    # --- warmup (JIT compile + cudnn autotune; logged with a warmup tag) ---
     w_ids = tok(groups[0][1][0]["prompt"], return_tensors="pt"
                 ).input_ids.cuda()
     warm_modes = (["nowin", "win"] if args.no_cudnn
@@ -562,7 +577,7 @@ def main():
             plen = int(ids.shape[1])
             rec = dict(kind="item", group=gname, id=item["id"],
                        prompt_len=plen)
-            if args.timing_only:  # 計時run: logits採取なし=wall から同期ノイズ排除
+            if args.timing_only:  # timing run: no logits collection = no sync noise in wall time
                 try:
                     ex = (NULL_PASS if args.no_cudnn else
                           run_pass(model, ids, "exact_cudnn", cfg["max_new"],
@@ -605,7 +620,7 @@ def main():
                 g_sum["items"].append(rec)
                 continue
             try:
-                # OFF/ON = 同一バイナリ(FA4+FI・窓のみ切替); cuDNN = 外部参照
+                # OFF/ON = same binary (FA4+FI, only the window toggles); cuDNN = external reference
                 ex = (NULL_PASS if args.no_cudnn else
                       run_pass(model, ids, "exact_cudnn", cfg["max_new"], eos_ids,
                                stop_strs=cfg["stop_strs"], tok=tok))
@@ -725,7 +740,8 @@ def main():
                 prefill_ms_cudnn_med=md("prefill_ms_cudnn"))
         summary.append(g_sum)
 
-    # 窓幅の理論比 (素基数 zhi 由来): FI vec8 の平均読み率 s と天井 2/(1+s)
+    # Theoretical window ratios (from the raw-base zhi): FlashInfer vec8 mean read
+    # fraction s and the ceiling 2/(1+s).
     try:
         from fiwin_common import theory_s_vec8
         d = STATE["head_dim"]
@@ -734,7 +750,7 @@ def main():
         mma = dict(fi_s_bar=s_bar, fi_ceiling_2_over_1ps=ceiling, at_len=plen,
                    raw_base=STATE["raw_base"], fa_zhi=list(STATE["fa_zhi"]),
                    fi_zhi8=STATE["fi_zhi8"].detach().cpu().tolist())
-    except Exception as e:  # 統計のみ・本体成否に影響させない
+    except Exception as e:  # statistics only; never fail the run over this
         mma = dict(error=str(e)[:200])
 
     fin = dict(meta=meta, groups=summary, mma_slices=mma,

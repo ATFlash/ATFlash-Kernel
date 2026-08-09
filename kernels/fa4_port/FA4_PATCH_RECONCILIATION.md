@@ -1,16 +1,31 @@
-# FA4 window patch — 規模の照合（論文§5「4 files +296/-13」の出所確定）
+# FA4 window patches — reconciling the three sizes
 
-- **base = 4f1fde1**（PR#2656 head "Pack-GQA on SM120"）。**upstream 5835c73 は同PRのsquash-merge＝content等価**（5835c73 は本repo objects に無いが 4f1fde1 が pre-squash 同一内容）。∴ vs 4f1fde1 = vs 5835c73。
-- 窓commit列: 4611f08(ampere k_chunks)→15c9564(flash_fwd 距離帯dim-prefix窓)→860e2e9(atflash_window.py host表)→c7fd744(interface opt-in)→bc21b79(trace/constexpr compile fix)→[以降 decode split-KV: 0e9a9a2/398961b/46eebce=HEAD]。
+The paper states the FA4 prefill port as "4 files, +296/−13 lines". Three patch
+files sit in this directory with three different sizes. This note pins down
+which is which, so the numbers can be checked rather than trusted.
 
-| range | files | +/- | 対応 |
+**Base commit.** All diffs are against `4f1fde1`, the head of upstream PR #2656
+("Pack-GQA on SM120"). Upstream merged that PR as the squash commit `5835c73`,
+so the two trees have identical content: a diff against `4f1fde1` is a diff
+against `5835c73`. The paper cites the public post-merge commit.
+
+**Window commit chain** (on top of the base):
+`4611f08` (ampere_helpers `k_chunks`) → `15c9564` (flash_fwd distance-banded
+dim-prefix window) → `860e2e9` (`atflash_window.py`, the host-side table) →
+`c7fd744` (interface opt-in) → `bc21b79` (trace/constexpr compile fix) → then
+decode split-KV: `0e9a9a2` / `398961b` / `46eebce` = HEAD.
+
+| range | files | +/− | what it is |
 |---|---|---|---|
-| 4f1fde1..**c7fd744** | 4 | **+296 / -13** | **= 論文§5 の数字（早7月報告のsnapshot・窓ロジック）** ✔完全一致 |
-| 4f1fde1..bc21b79 | 4 | +308 / -13 | B1 §6.3 prefill 計測に使ったbinary（bc21b79）。+12 は trace/constexpr の**compilefix・窓ロジック不変** |
-| 4f1fde1..HEAD(46eebce) | 4 | +562 / -64 | C2/7B microbench に使ったbinary（prefill窓は同一・decode split-KV が加算） |
+| `4f1fde1..c7fd744` | 4 | **+296 / −13** | The window logic itself — **the paper's number**, exact match. |
+| `4f1fde1..bc21b79` | 4 | +308 / −13 | The binary the prefill latency figure was measured with. The extra +12 is the trace/constexpr **compile fix; the window logic is unchanged**. |
+| `4f1fde1..HEAD (46eebce)` | 4 | +562 / −64 | The binary of the 7B prefill microbenchmark and the end-to-end runs. The prefill window is identical; decode split-KV accounts for the growth. |
 
-## 結論（論文に書くべき数字）
-- 論文§5「**4 files, +296/-13**」は **c7fd744 の窓ロジックdiff として正確**（file数4・削除-13 は全snapshotで不変）。
-- 厳密に「計測に使ったbinaryの窓diff」を書くなら **+308/-13**（bc21b79・+12 は非意味的 compilefix）。
-- **どちらも file数4・-13 は同じ**。修正必須ではない。**推奨**: 「4 files, +296/-13（window logic; measured binary は compile-fix 込みで +308/-13）」の脚注、または +296→+308 に更新のいずれか。
-- prefill窓は c7fd744/bc21b79/HEAD で不変（decode split-KV は別機構）。fig6/§6.3 の prefill 速度は bc21b79 由来。
+**Conclusions.**
+- "4 files, +296/−13" is exact for the window-logic diff at `c7fd744`. The file
+  count (4) and the deletion count (−13) are invariant across all three
+  snapshots.
+- The strictest reading — "the window diff of the measured binary" — would be
+  +308/−13 (`bc21b79`), where the +12 is a non-semantic compile fix.
+- The prefill window is byte-for-byte the same in `c7fd744`, `bc21b79` and HEAD;
+  decode split-KV is a separate mechanism layered on afterwards.

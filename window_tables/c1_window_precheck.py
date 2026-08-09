@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Phase C / C1 pre-check (config-based, no weights): argsort separation gate +
-1M window tables for Qwen2.5-7B-Instruct-1M (base 1e7, rope_scaling=null =>
-素基数=実効=1e7). Cross-checked against the model's real inv_freq at load time."""
+"""C1 pre-check (config-based, no weights): argsort separation gate +
+1M window tables for Qwen2.5-7B-Instruct-1M (base 1e7; rope_scaling=null means
+the raw base equals the effective base, 1e7). Cross-checked against the model's
+real inv_freq at load time."""
 import hashlib
 import math
 import sys
@@ -16,7 +17,7 @@ from fiwin_common import zhi_slice_vec8
 BASE = 1e7
 D = 128
 P = D // 2
-CAP = 1_100_000  # >= max_pos 1,010,000 (1M系列)
+CAP = 1_100_000  # >= max_pos 1,010,000 (the 1M series)
 
 
 def sha(obj):
@@ -31,7 +32,7 @@ canonical = torch.arange(P - 1, -1, -1, dtype=order.dtype)
 argsort_ok = torch.equal(order, canonical)
 print(f"model=Qwen2.5-7B-Instruct-1M base={BASE:g} d={D} P={P}")
 print(f"ARGSORT gate (real argsort == raw canonical): {argsort_ok}  "
-      f"(rope_scaling=null => 素基数=実効, 幅と並びの基準一致)")
+      f"(rope_scaling=null => raw base == effective base; width and order share one basis)")
 print(f"wavelengths_sorted head/tail: "
       f"{[round(x,1) for x in wavelengths_sorted(D, BASE, 2.0)[:3]]} ... "
       f"{[round(x,1) for x in wavelengths_sorted(D, BASE, 2.0)[-3:]]}")
@@ -41,4 +42,4 @@ for k in (2.0, 3.0, 4.0):
     fi = zhi_slice_vec8(D, BASE, k, device="cpu").tolist()  # FI 8snap (len d/8=16)
     print(f"k={k}: FA4 16snap len={len(fa)} sha={sha(list(fa))} {list(fa)}")
     print(f"      FI  8snap  len={len(fi)} sha={sha(fi)} {fi}")
-print("\nC1_PRECHECK_DONE (weights 不要・load 時に実 inv_freq と bit 照合)")
+print("\nC1_PRECHECK_DONE (no weights needed; bit-checked against the real inv_freq at load time)")
