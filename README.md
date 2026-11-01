@@ -5,12 +5,12 @@ Training-free, input-independent attention pruning for RoPE models, shipped as
 FlashInfer (decode). With the window **off**, both ports are **bit-identical to
 stock**. With the window **on**, on RTX PRO 6000 (Blackwell sm_120, GDDR7) both
 ports outpace their stock implementations at every evaluated Llama context
-length, and end to end the whole-request speedup reaches **1.31× at a 1M-token
+length, and end to end the whole-request speedup reaches **`1.31×` at a 1M-token
 context** (Qwen2.5-7B-Instruct-1M).
 
 Paper: **[arXiv:2608.02947](https://arxiv.org/abs/2608.02947)** — *ATFlash:
 Per-RoPE-Wavelength Attention Windows for Compute/Memory-Efficient LLM
-Inference*. Section references (§) below follow the paper.
+Inference*.
 
 ## The idea
 
@@ -52,7 +52,7 @@ distance `w_r = k·λ_r`:
 - **no token is dropped** — every key stays reachable through the low-frequency
   pairs, unlike a sliding window;
 - **the reduction is input-independent**, with a closed form logarithmic in the
-  sequence length `N` — you know the cost before running (37–48% of the terms
+  sequence length `N` — you know the cost before running (`37–48%` of the terms
   within native context, deepening with `N`);
 - **it is a slice of the query–key contraction axis** — the online-softmax
   recurrences (running max, normalizer, tiling) are untouched, which is why it
@@ -69,54 +69,37 @@ verified range.
 
 <p align="center"><img src="figs/fig_llama_ports_v19.png" width="80%"></p>
 
-- **Decode (FlashInfer 0.6.13 port, ~100 changed lines):** latency reductions of
-  6.0–22.3% vs stock FlashInfer on Llama-3.2-3B at 8K–128K, growing with
-  context; 1.296× over stock at a 160K shape.
-- **Prefill (FlashAttention-4 port, 4 files, +296/−13 lines):** 12.5–22.7%
-  faster than stock FA4 at 8K–128K, and below cuDNN at every context length.
 - **Qwen2.5-7B-1M prefill:** the windowed kernel is the fastest of all four
   systems (stock FA4 / cuDNN / FlashInfer / ours) at every N from 8K to 512K
   (1.234× vs stock at 262K, 1.427× at 512K).
 - **End to end** (FA4-port prefill feeding FlashInfer-port decode, one pipeline,
-  window ON/OFF in the same binary): **1.17× / 1.22× / 1.31×** whole-request
+  window ON/OFF in the same binary): **`1.17×` / `1.22×` / `1.31×`** whole-request
   time at 256K / 512K / 1M tokens.
+- **Wide window, still faster:** with `k = 64`, the setting that retrieves
+  100/100 needles at 128K in [`evaluations/ruler_niah_128k/`](evaluations/ruler_niah_128k/),
+  the whole request is **`1.09×`** faster at 256K and **`1.14×`** at 512K
+  (Qwen2.5-7B-Instruct-1M, median of six rounds).
 - **Bit-identity:** window OFF generates the same numerics as stock on both
-  ports (`gates/`), so the ratio isolates the window itself.
+  ports (`gates/`), so the ratio isolates the window itself. With the window on,
+  both ports match an fp32 reference in `9/9` test cases each.
+
+<details>
+<summary>Numbers</summary>
+
+- **Decode (FlashInfer 0.6.13 port, ~100 changed lines):** latency reductions of
+  `6.0–22.3%` vs stock FlashInfer on Llama-3.2-3B at 8K–128K, growing with
+  context; `1.296×` over stock at a 160K shape.
+- **Prefill (FlashAttention-4 port, 4 files, +296/−13 lines):** `12.5–22.7%`
+  faster than stock FA4 at 8K–128K, and below cuDNN at every context length.
+- **Conditions** of the `k = 64` runs are in
+  [`e2e_pipeline/`](e2e_pipeline/README.md#wide-window-end-to-end-measurements) and
+  [`VERIFICATION.md`](VERIFICATION.md) (row 7a); the fp32 check is row 3.
 
 Recovery of the theoretical `2/(1+s)` ceiling lines up across the two
-implementation families (85–96%), so the conversion of predicted reduction into
+implementation families (`85–96%`), so the conversion of predicted reduction into
 wall-clock time is not implementation-specific.
 
-Output quality is evaluated in the paper (§6): top-1 match 96–98% and KL at the
-1e-3-nat level in the native regime, benchmark scores broadly preserved, with
-one identified exception (retrieval over structureless strings) that the single
-parameter `k` recovers — `k` is a deployment-time dial between attention
-accuracy and compute.
-
-## Repository layout
-
-| dir | contents |
-|---|---|
-| `atflash/` | The method itself: the window rule (`window_table.py`) and a readable torch reference (`reference.py`). Start here. |
-| `kernels/flashinfer_port/` | The FlashInfer 0.6.13 decode window as unified diffs, plus the JIT/shadow-copy helper. |
-| `window_tables/` | The torch-free table generator, and the exact per-model tables used in every run. |
-| `gates/` | Bit-identity and neutrality gates (window OFF == stock; chunked == single-shot). |
-| `microbench/` | The prefill microbenchmark and the raw measurements behind the latency figure above. |
-| `e2e_pipeline/` | The end-to-end 1M-context harness (FA4 prefill + FlashInfer decode inside HF transformers). |
-| `results_raw/` | Raw run summaries behind the speed tables. |
-
-Each directory carries its own `README.md` with file-by-file roles.
-**`SETUP.md` walks through building both ports and reproducing the numbers;
-`VERIFICATION.md` records what was actually measured, on what hardware, and —
-just as importantly — what was not.**
-
-Everything derived from FlashAttention lives in the companion repository
-**[`ATFlash-Kernel-FA4`](https://github.com/ATFlash/ATFlash-Kernel-FA4)**: the
-upstream tree at the pinned base with the window
-applied commit by commit, plus the three window patches and their
-reconciliation ledger under `patches/`. The split is by license — that
-repository is BSD-3-Clause throughout (upstream's license), this one is purely
-Apache-2.0. It is a standalone copy, not a fork, and sends nothing upstream.
+</details>
 
 ## Using the ports
 
@@ -131,7 +114,7 @@ the interface; without a window table the code path is stock.
 
 **FlashInfer decode.** Start from the released FlashInfer 0.6.13 wheel, apply
 `kernels/flashinfer_port/*.diff` as a shadow copy, and point `PYTHONPATH` +
-`FLASHINFER_WORKSPACE_BASE` at it (`fi_window_helpers.py` shows the exact
+`FLASHINFER_WORKSPACE_BASE` at it (`fiwin_common.py` shows the exact
 mechanism). The window condition is added to the K-load predicate; window OFF
 follows the stock code path.
 
@@ -143,7 +126,12 @@ tuned per input. The tables used in the measurements are included verbatim.
 bit-identical to stock before any speed number is meaningful. That test is the
 one we would ask of any new port, including our own.
 
-**Porting to something else.** The two ports above are worked examples in two
+<p align="center"><img src="figs/atflash_impl_full.png" width="100%"></p>
+
+<details>
+<summary>Porting to something else</summary>
+
+The two ports above are worked examples in two
 unrelated kernel idioms — a CuTeDSL kernel and a CUDA-template kernel — which is
 the evidence that the insertion is not tied to one codebase. For a third, you
 need `atflash/window_table.py` to produce the per-pair widths, the prefix length
@@ -155,18 +143,18 @@ over `r`, which is where ATFlash starts the reduction at the window boundary
 the gray out-of-window prefix never entering SRAM, with `RoPE(z)` fused at
 load.
 
-<p align="center"><img src="figs/atflash_impl_full.png" width="100%"></p>
-
 (The full FlashAttention online-softmax loop with the same insertion marked —
 including the running max, normalizer and PV accumulation — is in the
 companion repository `ATFlash-Kernel-FA4`, next to the code it explains.)
 
+</details>
+
 ## Scope and portability
 
-Speed numbers above are from a single hardware generation (sm_120, GDDR7) —
-a representative single-GPU inference platform outside the specialization
-targets of FA3/FA4 — and the paper reports them as such (§8, Limitations). The
-window itself is architecture-neutral (a static shortening of the QK reduction);
+Speed numbers above are measured on RTX PRO 6000 (sm_120, GDDR7), a
+representative single-GPU inference platform outside the specialization
+targets of FA3/FA4. The window itself is architecture-neutral (a static
+shortening of the QK reduction);
 ports to other kernels and other hardware generations are welcome.
 
 Absolute paths in the harnesses (`/home/USER/...`) are placeholders standing in
@@ -174,6 +162,25 @@ for the machine the measurements ran on, and `agentA` / `agentB` are the tags of
 the two measurement processes, kept because they are part of the run directory
 names the raw summaries refer to. Point the paths at your own environment to
 re-run.
+
+## MiMo-V2.6 and MTP
+
+On MiMo-V2.6, a 1.02T-parameter MoE model with a native 1M context, LongBench-v2
+accuracy with the window (`k = 2`) stays within `−1.59` to `+2.51` points of the
+unwindowed model at 16K–128K, and the difference is `0.0` points at 512K
+([`evaluations/mimo_v26_longbench_v2/`](evaluations/mimo_v26_longbench_v2/)).
+
+<p align="center"><img src="figs/mimo_longbench_v2_512k.png" width="85%"></p>
+
+The window also works with MiMo-V2.6's multi-token prediction (MTP) head for
+speculative decoding: with `k = 1–4`, how often an MTP draft matches the target
+model stays within `0.5` points of full attention
+([`evaluations/mimo_v26_mtp_compatibility/`](evaluations/mimo_v26_mtp_compatibility/)).
+
+> [!TIP]
+> **All results at a glance, each with its figure and a one-line takeaway:
+> [`docs/overview.md`](docs/overview.md)** — kernel speed, and output quality
+> from 0.5B to 70B and on MiniMax-M2.7.
 
 ## License
 
@@ -190,7 +197,7 @@ with or endorses these modifications.
 @misc{hayashi2026atflash,
   title         = {ATFlash: Per-RoPE-Wavelength Attention Windows for
                    Compute/Memory-Efficient LLM Inference},
-  author        = {Hayashi, Shun-ichiro and Mukunoki, Daichi and
+  author        = {Hayashi, Shun{-}ichiro and Mukunoki, Daichi and
                    Hoshino, Tetsuya and Katagiri, Takahiro},
   year          = {2026},
   eprint        = {2608.02947},
