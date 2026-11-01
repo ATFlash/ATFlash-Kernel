@@ -1,0 +1,3 @@
+task,n,exact_string_match_sum,window_string_match_sum,exact_strict_sum,window_strict_sum,window_agrees_with_exact_sum
+mk_niah,50,50.0,49.0,26,26,40
+niah_single,50,50.0,50.0,48,44,44

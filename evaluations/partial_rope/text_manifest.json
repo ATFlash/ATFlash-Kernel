@@ -1,0 +1,197 @@
+{
+  "state": "SEALED",
+  "dataset_revision": "2b48e494f2c7a2f0af81aae178e05c7e1dde0fe9",
+  "data_sha256": "15d61c22d92c96900b3c4948b6aeea218d3214b676a65df48e7b8555604c7fe2",
+  "variants": {
+    "base": {
+      "sha256": "3052e5a12c61c5737ccbede816e77984e93ee0d980b0ba587cff55253929e4be",
+      "characters": 403319,
+      "documents": [
+        {
+          "row_position": 112,
+          "_id": "66ec356a821e116aacb1c22b",
+          "domain": "Multi-Document QA",
+          "context_sha256": "f7e1b2152bc9b2fadf817590c41a9fd7e826816936cb5c5322c4dcb1fe97dda5",
+          "char_start": 0,
+          "char_end": 48765
+        },
+        {
+          "row_position": 176,
+          "_id": "66f91f2cbb02136c067c4b1e",
+          "domain": "Single-Document QA",
+          "context_sha256": "cf280ca69fe49e7fad6fb8fba7286aece78340c978bae761e918ce1bee4bef60",
+          "char_start": 48767,
+          "char_end": 100390
+        },
+        {
+          "row_position": 187,
+          "_id": "66f9625fbb02136c067c5456",
+          "domain": "Long In-context Learning",
+          "context_sha256": "cb0b0c6d4c5c2174d952be820e2c16eb65e3e8379417dd7ec9a9f52b299ae2af",
+          "char_start": 100392,
+          "char_end": 154345
+        },
+        {
+          "row_position": 166,
+          "_id": "66ed2c87821e116aacb1f149",
+          "domain": "Long Structured Data Understanding",
+          "context_sha256": "21759bfc1180f4b4ab8141d9e9ab63e334eaa3344b4cebe54f8901bea9fb35bc",
+          "char_start": 154347,
+          "char_end": 214265
+        },
+        {
+          "row_position": 199,
+          "_id": "6713066fbb02136c067d3214",
+          "domain": "Long-dialogue History Understanding",
+          "context_sha256": "d5bf991f0ef2790cd06320c2b12de17b4e918513ba804273be986d9b8b7fc404",
+          "char_start": 214267,
+          "char_end": 301969
+        },
+        {
+          "row_position": 196,
+          "_id": "66f3ad93821e116aacb2e29f",
+          "domain": "Code Repository Understanding",
+          "context_sha256": "2dd9c42c561b893add8a1e8e56053123d56309eace5997fd6a6d82217dd15eb6",
+          "char_start": 301971,
+          "char_end": 403319
+        }
+      ],
+      "source": "THUDM/LongBench-v2 (data.json, context field)"
+    },
+    "extended_900k": {
+      "sha256": "cdefa12968860834154a3b7ddab66eb818c20cd89105caa75214145709568e60",
+      "characters": 948730,
+      "documents": [
+        {
+          "row_position": 112,
+          "_id": "66ec356a821e116aacb1c22b",
+          "domain": "Multi-Document QA",
+          "context_sha256": "f7e1b2152bc9b2fadf817590c41a9fd7e826816936cb5c5322c4dcb1fe97dda5",
+          "char_start": 0,
+          "char_end": 48765
+        },
+        {
+          "row_position": 176,
+          "_id": "66f91f2cbb02136c067c4b1e",
+          "domain": "Single-Document QA",
+          "context_sha256": "cf280ca69fe49e7fad6fb8fba7286aece78340c978bae761e918ce1bee4bef60",
+          "char_start": 48767,
+          "char_end": 100390
+        },
+        {
+          "row_position": 187,
+          "_id": "66f9625fbb02136c067c5456",
+          "domain": "Long In-context Learning",
+          "context_sha256": "cb0b0c6d4c5c2174d952be820e2c16eb65e3e8379417dd7ec9a9f52b299ae2af",
+          "char_start": 100392,
+          "char_end": 154345
+        },
+        {
+          "row_position": 166,
+          "_id": "66ed2c87821e116aacb1f149",
+          "domain": "Long Structured Data Understanding",
+          "context_sha256": "21759bfc1180f4b4ab8141d9e9ab63e334eaa3344b4cebe54f8901bea9fb35bc",
+          "char_start": 154347,
+          "char_end": 214265
+        },
+        {
+          "row_position": 199,
+          "_id": "6713066fbb02136c067d3214",
+          "domain": "Long-dialogue History Understanding",
+          "context_sha256": "d5bf991f0ef2790cd06320c2b12de17b4e918513ba804273be986d9b8b7fc404",
+          "char_start": 214267,
+          "char_end": 301969
+        },
+        {
+          "row_position": 196,
+          "_id": "66f3ad93821e116aacb2e29f",
+          "domain": "Code Repository Understanding",
+          "context_sha256": "2dd9c42c561b893add8a1e8e56053123d56309eace5997fd6a6d82217dd15eb6",
+          "char_start": 301971,
+          "char_end": 403319
+        },
+        {
+          "row_position": 238,
+          "_id": "66f37eb9821e116aacb2d295",
+          "domain": "Multi-Document QA",
+          "context_sha256": "1465b01e457975657ccfadf0457c4632517f443138fade485ecef3e81718579d",
+          "char_start": 403321,
+          "char_end": 453413
+        },
+        {
+          "row_position": 379,
+          "_id": "66f41348821e116aacb30c89",
+          "domain": "Multi-Document QA",
+          "context_sha256": "77fb4396c9420df739c115f2c8eccd7d41a2b1beb7474fc0d58c3b91e5a500a0",
+          "char_start": 453415,
+          "char_end": 504841
+        },
+        {
+          "row_position": 461,
+          "_id": "66f245cc821e116aacb28698",
+          "domain": "Multi-Document QA",
+          "context_sha256": "bbcd8474a4d33ac44225bf417b1c4e8963ac338ce2e4fe7f53566e0b8a771ba4",
+          "char_start": 504843,
+          "char_end": 558825
+        },
+        {
+          "row_position": 401,
+          "_id": "66f2e0bc821e116aacb2bf37",
+          "domain": "Multi-Document QA",
+          "context_sha256": "78dfa60fcea07476893ed2779f9a7905c4cce281b6aef7fedc4a9dc859cebd7f",
+          "char_start": 558827,
+          "char_end": 614170
+        },
+        {
+          "row_position": 439,
+          "_id": "66ebd3075a08c7b9b35e02bd",
+          "domain": "Single-Document QA",
+          "context_sha256": "4198ec4b7650ba6a192e148078e4614e19b420515456642a682f90fd7b8bbf07",
+          "char_start": 614172,
+          "char_end": 669559
+        },
+        {
+          "row_position": 289,
+          "_id": "66ec1de5821e116aacb1adca",
+          "domain": "Single-Document QA",
+          "context_sha256": "f29133d2ac91b3e1fd1c32428c8c86a8b39f36cd83380666d602bb6b0661ac97",
+          "char_start": 669561,
+          "char_end": 725064
+        },
+        {
+          "row_position": 352,
+          "_id": "66f52c6d821e116aacb32cb0",
+          "domain": "Single-Document QA",
+          "context_sha256": "ad96a4a066b05cd16c38e8ebaa78bffa30d8b8421b69e807de72b58ed2bd0459",
+          "char_start": 725066,
+          "char_end": 780612
+        },
+        {
+          "row_position": 334,
+          "_id": "66f3abe6821e116aacb2e1d2",
+          "domain": "Multi-Document QA",
+          "context_sha256": "db56a56a2eda7b7943520a12317536fcbdee791f6251f342dc72d3522036893c",
+          "char_start": 780614,
+          "char_end": 836557
+        },
+        {
+          "row_position": 79,
+          "_id": "67040276bb02136c067cd8ae",
+          "domain": "Single-Document QA",
+          "context_sha256": "0ada41dd0ac2f2e8010188bb6352a40d9218aa667ce37d3ee904fe66d5a0c84f",
+          "char_start": 836559,
+          "char_end": 892590
+        },
+        {
+          "row_position": 326,
+          "_id": "66f6bcf3bb02136c067c2703",
+          "domain": "Multi-Document QA",
+          "context_sha256": "03bb8e61b29861a2b73c131a537e13060dedf93ce7039a09437075af6615404c",
+          "char_start": 892592,
+          "char_end": 948730
+        }
+      ],
+      "source": "THUDM/LongBench-v2 (data.json, context field; pass2-extended to >=900000 chars, prefix-preserving)"
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "state": "SEALED",
+  "dataset_revision": "2b48e494f2c7a2f0af81aae178e05c7e1dde0fe9",
+  "data_sha256": "15d61c22d92c96900b3c4948b6aeea218d3214b676a65df48e7b8555604c7fe2",
+  "joined_text_sha256": "3052e5a12c61c5737ccbede816e77984e93ee0d980b0ba587cff55253929e4be",
+  "joined_characters": 403319,
+  "source": "THUDM/LongBench-v2 (data.json, context field)",
+  "documents": [
+    {
+      "row_position": 112,
+      "_id": "66ec356a821e116aacb1c22b",
+      "domain": "Multi-Document QA",
+      "context_sha256": "f7e1b2152bc9b2fadf817590c41a9fd7e826816936cb5c5322c4dcb1fe97dda5",
+      "order": 0,
+      "char_start": 0,
+      "char_end": 48765
+    },
+    {
+      "row_position": 176,
+      "_id": "66f91f2cbb02136c067c4b1e",
+      "domain": "Single-Document QA",
+      "context_sha256": "cf280ca69fe49e7fad6fb8fba7286aece78340c978bae761e918ce1bee4bef60",
+      "order": 1,
+      "char_start": 48767,
+      "char_end": 100390
+    },
+    {
+      "row_position": 187,
+      "_id": "66f9625fbb02136c067c5456",
+      "domain": "Long In-context Learning",
+      "context_sha256": "cb0b0c6d4c5c2174d952be820e2c16eb65e3e8379417dd7ec9a9f52b299ae2af",
+      "order": 2,
+      "char_start": 100392,
+      "char_end": 154345
+    },
+    {
+      "row_position": 166,
+      "_id": "66ed2c87821e116aacb1f149",
+      "domain": "Long Structured Data Understanding",
+      "context_sha256": "21759bfc1180f4b4ab8141d9e9ab63e334eaa3344b4cebe54f8901bea9fb35bc",
+      "order": 3,
+      "char_start": 154347,
+      "char_end": 214265
+    },
+    {
+      "row_position": 199,
+      "_id": "6713066fbb02136c067d3214",
+      "domain": "Long-dialogue History Understanding",
+      "context_sha256": "d5bf991f0ef2790cd06320c2b12de17b4e918513ba804273be986d9b8b7fc404",
+      "order": 4,
+      "char_start": 214267,
+      "char_end": 301969
+    },
+    {
+      "row_position": 196,
+      "_id": "66f3ad93821e116aacb2e29f",
+      "domain": "Code Repository Understanding",
+      "context_sha256": "2dd9c42c561b893add8a1e8e56053123d56309eace5997fd6a6d82217dd15eb6",
+      "order": 5,
+      "char_start": 301971,
+      "char_end": 403319
+    }
+  ]
+}
