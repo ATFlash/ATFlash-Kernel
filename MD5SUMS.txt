@@ -11,7 +11,7 @@ c112ea262c7ee4602bf3adc3e88dcf8a *./VERIFICATION.md
 d09aa64fe4bc8066d619ba4c89a509fd *./atflash/reference.py
 9fd27ead7c598ea872509b80f6fd8c84 *./atflash/window_table.py
 8f16e4856ec9ab52f1d2ce9daef536f6 *./docs/glossary.md
-6f9618d0a1f702a4a6185528788d587e *./docs/overview.md
+0d71f4e94e1c37abc5de093d4b9ca811 *./docs/overview.md
 7903b3821a594ed5d2838bfe94f053c7 *./e2e_pipeline/README.md
 fc7eaa7e391aae4ddfd8b01a5bcf37c2 *./e2e_pipeline/atflash_e2e_fafi.py
 8ba63b0ad2f21d04bbdca3f8635a0e75 *./e2e_pipeline/build_long_pool.py
