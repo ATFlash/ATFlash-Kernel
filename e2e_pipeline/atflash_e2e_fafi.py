@@ -8,7 +8,7 @@ whole request (prefill + decode) on real benchmark prompts (shared/data/).
   pair layout (pair j -> dims 2j,2j+1); the cache holds the permuted K.
   prefill = FA4 (BSHD view), decode = FlashInfer (HND view).
 - Window tables: WIDTHS come from the raw (pre-scaling) RoPE base, i.e. the same
-  zhi tables as the published benches (FA4 sweep7 / FI 20260715). ORDER (the
+  zhi tables as the published kernel microbenchmarks. ORDER (the
   permute) comes from the model's real inv_freq argsort; if that argsort does
   not match the raw canonical order the run stops with SystemExit before
   measuring. Snap granularity: FA4 = 16 dims, FI = 8 dims.
@@ -37,11 +37,11 @@ import torch
 import torch.nn.functional as F
 from torch.nn.attention import SDPBackend, sdpa_kernel
 
-from atflash import window_table as WT
-
 # --- FA4 (prefill) + FlashInfer (decode) ports -------------------------------
-# window WIDTH = raw (pre-scaling) RoPE base zhi table == published benches
-# (FA4 sweep7 / FI 20260715); window ORDER = the harness permute (real inv_freq).
+# window WIDTH = raw (pre-scaling) RoPE base zhi table == the published kernel
+# microbenchmarks; window ORDER = the harness permute (real inv_freq).
+# fiwin_common = kernels/flashinfer_port/fiwin_common.py and atflash_window =
+# window_tables/atflash_window.py in this repository (the paths below are placeholders).
 sys.path.insert(0, "/home/USER/atflash/agents/agentB/fiwin/scripts")
 sys.path.insert(0, "/home/USER/atflash/agents/agentA/fa-b1/flash_attn/cute")
 from flash_attn.cute.interface import _flash_attn_fwd
@@ -69,7 +69,7 @@ MODELS = {
     "llama": "unsloth/Llama-3.2-3B",
     "qwen7b1m": "Qwen/Qwen2.5-7B-Instruct-1M",  # Phase C: base 1e7, GQA g7, d128
 }
-PREFILL_CFG = {  # winning configuration of the W3 sweep
+PREFILL_CFG = {  # fastest configuration of the tile sweep
     64: dict(block_m=128, block_n=64, block_d=16, num_warps=4, num_stages=2),
     128: dict(block_m=64, block_n=64, block_d=32, num_warps=4, num_stages=2),
 }
@@ -290,15 +290,6 @@ def nll_of(logits, tokens):
         lp = F.log_softmax(logits[i].cuda(), dim=-1)
         out.append(float(-lp[0, tokens[i]]))
     return np.array(out)
-
-
-def top64(logits):
-    vals, idx = [], []
-    for lg in logits:
-        v, ix = torch.topk(lg[0], 64)
-        vals.append(v.numpy())
-        idx.append(ix.numpy().astype(np.int64))
-    return np.stack(vals), np.stack(idx)
 
 
 # ------------------------------------------------------------------- benches

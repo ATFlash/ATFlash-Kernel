@@ -12,6 +12,8 @@ import sys
 os.environ.setdefault("HF_HOME", "/home/USER/atflash/shared/data/hf_cache")
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+# atflash_e2e_fafi = e2e_pipeline/atflash_e2e_fafi.py in this repository (the path
+# below is a placeholder).
 sys.path.insert(0, "/home/USER/atflash/agents/agentB/phasea")
 
 import torch

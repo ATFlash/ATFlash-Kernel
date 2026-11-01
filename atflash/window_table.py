@@ -54,12 +54,12 @@ def wavelengths_sorted(head_dim: int, rope_base: float, k_ret: float,
     return w.to(torch.float32).to(device)
 
 
-def n_active(z_min, wvec: torch.Tensor) -> int:
+def n_active(z_min: int, wvec: torch.Tensor) -> int:
     """Number of pairs active at distance z_min (fp32 comparison, as in the kernel)."""
     return int((wvec >= float(z_min)).sum().item())
 
 
-def deff_of_zmin(z_min, wvec: torch.Tensor, head_dim: int) -> int:
+def deff_of_zmin(z_min: int, wvec: torch.Tensor, head_dim: int) -> int:
     """Prefix length along the head dim, rounded up to a multiple of 16 and
     clamped to [16, head_dim]."""
     deff = 2 * n_active(z_min, wvec)
@@ -77,7 +77,8 @@ def zmin_tile(phase: str, q0: int, n0: int, block_m: int, block_n: int,
 
 
 def deff_segments(phase: str, q0: int, n_hi: int, block_m: int, block_n: int,
-                  n_ctx: int, wvec: torch.Tensor, head_dim: int):
+                  n_ctx: int, wvec: torch.Tensor,
+                  head_dim: int) -> list[tuple[int, int, int]]:
     """Segments (n_start, n_end, deff) covering the key range [0, n_hi) for query tile q0.
 
     deff is constant within a key tile and monotone in distance, so it collapses
@@ -102,7 +103,7 @@ def deff_segments(phase: str, q0: int, n_hi: int, block_m: int, block_n: int,
 
 
 def mma_slice_stats(phase: str, m_ctx: int, n_ctx: int, block_m: int,
-                    block_n: int, wvec: torch.Tensor, head_dim: int):
+                    block_n: int, wvec: torch.Tensor, head_dim: int) -> dict:
     """Theoretical MMA k-slice counts (16 dims per slice), windowed vs full,
     together with the ratio of K bytes loaded."""
     total_win = 0

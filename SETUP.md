@@ -32,7 +32,7 @@ pip install -e .   # CuTeDSL path: python-only, no C++ compilation at install
 
 The raw diffs live in that repository's `patches/` directory; its
 `patches/FA4_PATCH_RECONCILIATION.md` maps each patch to its measured number
-(the paper's "+296/−13", the measured binary's "+308/−13", and the full port).
+(the minimal patch "+296/−13", the measured binary "+308/−13", and the full port).
 Its git history applies them one commit per step, so `git diff` between
 commits shows exactly what the window adds.
 
@@ -53,17 +53,20 @@ export PYTHONPATH=$PWD:$PYTHONPATH
 export FLASHINFER_WORKSPACE_BASE=$PWD/cache
 ```
 
-`kernels/flashinfer_port/fi_window_helpers.py` shows the JIT-module builder and
+`kernels/flashinfer_port/fiwin_common.py` shows the JIT-module builder and
 the vec8 window-table snap this port consumes.
 
 ## 3. Window tables
 
 ```bash
+export PYTHONPATH=$PWD/kernels/flashinfer_port:$PWD/window_tables:$PYTHONPATH
 python window_tables/c1_window_precheck.py   # CPU only, no weights
+python tools/cpu_checks.py                   # CPU only: tables vs reference and vs the recorded run
 ```
 
-prints the argsort separation gate and the zhi tables for several `k`, with
-hashes. `window_tables/w_meta_from_hf.py` derives tables for any HF model from
+The pre-check prints the argsort separation gate and the zhi tables for several
+`k`, with hashes; `tools/cpu_checks.py` compares them with the recorded
+`window_tables/c1_window_tables.txt` and with the torch reference. `window_tables/w_meta_from_hf.py` derives tables for any HF model from
 its config (`inv_freq`); the `w_meta_*.json` files are the exact tables the
 published runs used.
 

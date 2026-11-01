@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Pre-truncate the long pool to ~132k tokens (central) so B2 harness startup is
-fast and all KV sizes share the same base content. CPU-only, offline."""
+"""Pre-truncate the long pool to about 132K tokens (keeping both ends, cutting the
+middle), so that the end-to-end harness starts fast and every KV size shares the
+same base content. CPU only, offline."""
 import json
 import os
 

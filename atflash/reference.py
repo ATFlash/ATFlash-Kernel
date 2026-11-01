@@ -24,10 +24,22 @@ import torch
 from . import window_table as WT
 
 
-def ref_window_attn(q, k, v, wvec, *, phase: str, block_m: int, block_n: int,
-                    mode: str = "fp32"):
-    """q:(b,hq,M,d) k,v:(b,hkv,N,d) bf16. Returns (b,hq,M,d), fp32 for mode="fp32"
-    and bf16 otherwise."""
+def ref_window_attn(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
+                    wvec: torch.Tensor, *, phase: str, block_m: int, block_n: int,
+                    mode: str = "fp32") -> torch.Tensor:
+    """Windowed attention, computed tile by tile from the window table.
+
+    Args:
+        q: (b, hq, M, d) bf16 queries, already in the wavelength-sorted pair layout.
+        k, v: (b, hkv, N, d) bf16 keys and values (hq must be a multiple of hkv).
+        wvec: per-pair window widths from window_table.wavelengths_sorted.
+        phase: "prefill" (M == N, causal) or "decode" (M == 1, sees all N keys).
+        block_m, block_n: the tile shape whose quantization the kernel uses.
+        mode: "fp32" (correctness baseline) or "bf16" (kernel-like error anchor).
+
+    Returns:
+        (b, hq, M, d), fp32 for mode="fp32" and bf16 otherwise.
+    """
     assert mode in ("fp32", "bf16")
     assert phase in ("prefill", "decode")
     b, hq, M, d = q.shape

@@ -1,9 +1,10 @@
 # Window meta from the HF model ENTITY (spec: no formula reimplementation).
 # lam_r = 2*pi / model.model.rotary_emb.inv_freq  (float64)
-# w_r   = K_CONVEX * lam_r   (convex k=2; the min(.., N) cap in lbv2
-#         make_policies() never changes the drop set for z <= N-1, so the
+# w_r   = K_CONVEX * lam_r   (convex k=2; the min(.., N) cap applied by the
+#         reference harness never changes the drop set for z <= N-1, so the
 #         uncapped form is decision-identical on both sides)
-# CPU only. Output: w_meta JSON consumed by atf_window_backend + HF reference.
+# CPU only. Output: w_meta JSON consumed by the vLLM integration (released
+# separately) and by the HF reference.
 import hashlib, json, os, sys, time
 
 MODEL_ID = "Qwen/Qwen2.5-0.5B"

@@ -1,32 +1,41 @@
 # -*- coding: utf-8 -*-
-"""fiwin (ATFLASH-B2): FlashInfer single-decode per-frequency prefix window.
+"""Helpers for the FlashInfer decode window port (single-request decode).
 
-Shared helpers: zhi table (vec8 snap), custom JIT module builder, runner.
-flashinfer must be the patched shadow copy (PYTHONPATH=agents/agentB/fiwin/pkgs,
-FLASHINFER_WORKSPACE_BASE=agents/agentB/fiwin/cache).
-zhi semantics = canonical atflash_window (agentA fa-b1, read-only import):
-  sorted pair j (desc wavelength) occupies dims (2j, 2j+1); pair active at age z
-  iff z <= w_j (fp32). vec8 snap: thread tx owns 8 dims = 4 pairs
-  [4*tx, 4*tx+4); slice active iff z <= floor(w[4*tx]) (max w in slice
-  = snap-UP inclusion, finer than FA4-B1's 16-elem snap).
+Contents: the window table at 8-dim granularity (vec8 snap), the builder of the
+custom JIT decode module, a runner, and a random test case.
+
+`flashinfer` must resolve to the patched shadow copy (PYTHONPATH pointing at it,
+FLASHINFER_WORKSPACE_BASE at its JIT cache; see SETUP.md). The window widths come
+from `atflash_window`, which is window_tables/atflash_window.py in this repository
+(the FA4 companion ships the same code as flash_attn/cute/atflash_window.py).
+AGENTA_CUTE below is a placeholder path to that module; putting window_tables/ on
+PYTHONPATH works as well. Scripts import this file as `fiwin_common`.
+
+Table semantics: sorted pair j (descending wavelength) occupies dims (2j, 2j+1)
+and is read at key distance z iff z <= w_j (fp32). With the vec8 snap, thread tx
+owns 8 dims = 4 pairs [4*tx, 4*tx+4), and its slice is read iff
+z <= floor(w[4*tx]), the largest width in the slice. Rounding up to the slice
+keeps terms rather than dropping them, and is finer than the FA4 port's 16-dim
+snap.
 """
 import math
-import os
 import sys
 
 import torch
 
 AGENTA_CUTE = "/home/USER/atflash/agents/agentA/fa-b1/flash_attn/cute"
 if AGENTA_CUTE not in sys.path:
-    sys.path.insert(0, AGENTA_CUTE)  # read-only import of canonical window table
+    sys.path.insert(0, AGENTA_CUTE)  # read-only import of the FA4 window-table module
 from atflash_window import wavelengths_sorted  # noqa: E402
 
 INT32_MAX = 2**31 - 1
 VEC_SIZE = 8  # bf16: 16B / 2B
 
 
-def zhi_slice_vec8(head_dim: int, rope_base: float, k_ret: float, device="cuda:0"):
-    """int32 [bdx] table: max age for which thread tx's 8-dim slice is active."""
+def zhi_slice_vec8(head_dim: int, rope_base: float, k_ret: float,
+                   device="cuda:0") -> torch.Tensor:
+    """int32 [head_dim // 8]: the largest key distance at which thread tx's 8-dim
+    slice is still read."""
     wvec = wavelengths_sorted(head_dim, rope_base, k_ret)  # [P] desc, fp32 values
     bdx = head_dim // VEC_SIZE
     pairs_per_thread = VEC_SIZE // 2
@@ -37,8 +46,10 @@ def zhi_slice_vec8(head_dim: int, rope_base: float, k_ret: float, device="cuda:0
     return torch.tensor(out, dtype=torch.int32, device=device)
 
 
-def theory_s_vec8(head_dim: int, rope_base: float, k_ret: float, n_ctx: int):
-    """(s_bar, ceiling): mean K-read fraction under vec8 snap and 2/(1+s) ceiling."""
+def theory_s_vec8(head_dim: int, rope_base: float, k_ret: float,
+                  n_ctx: int) -> tuple[float, float]:
+    """(s_bar, ceiling): the mean fraction of K read under the vec8 snap, and the
+    2/(1+s) speedup ceiling it implies."""
     zhi = zhi_slice_vec8(head_dim, rope_base, k_ret, device="cpu").tolist()
     bdx = head_dim // VEC_SIZE
     total = 0
@@ -53,6 +64,8 @@ _MOD_CACHE = {}
 
 
 def build_atfwin_module(dtype: torch.dtype, head_dim: int):
+    """Build (once per dtype and head_dim) the custom single-decode JIT module that
+    carries the window table as the extra tensor `maybe_zhi_slice`."""
     key = (dtype, head_dim)
     if key in _MOD_CACHE:
         return _MOD_CACHE[key]
@@ -80,8 +93,10 @@ def build_atfwin_module(dtype: torch.dtype, head_dim: int):
     return mod
 
 
-def run_atfwin(mod, q, k, v, zhi_slice=None, sm_scale=None):
-    """Custom-module decode. zhi_slice=None => window OFF (stock-identical path)."""
+def run_atfwin(mod, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
+               zhi_slice=None, sm_scale=None) -> torch.Tensor:
+    """Decode through the custom module. zhi_slice=None turns the window off (the
+    stock-identical path)."""
     from flashinfer.decode import single_decode_with_kv_cache_with_jit_module
 
     if sm_scale is None:
@@ -98,6 +113,8 @@ def run_atfwin(mod, q, k, v, zhi_slice=None, sm_scale=None):
 
 
 def make_case(model: str, kv: int, device="cuda:0", seed=1234):
+    """Random bf16 (q, k, v) with Llama-3.2-3B or Qwen2.5-0.5B decode shapes and kv
+    cached keys, plus the model's RoPE base."""
     cfg = {"llama": (24, 8, 128, 500000.0), "qwen": (14, 2, 64, 1000000.0)}[model]
     hq, hkv, d, base = cfg
     g = torch.Generator(device="cpu").manual_seed(seed + kv + d)

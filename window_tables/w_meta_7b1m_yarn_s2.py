@@ -1,10 +1,9 @@
 # Window meta for Qwen2.5-7B-Instruct-1M under YaRN factor=2 (extrapolation-pilot
-# recipe, same as Table 1's YaRN s=2). Entity-faithful: set rope_scaling=yarn on
+# recipe, the YaRN s=2 setting). Entity-faithful: set rope_scaling=yarn on
 # the config and let the model's OWN Qwen2RotaryEmbedding compute the YaRN inv_freq
 # (NO formula reimplementation). lam_r = 2*pi/inv_freq_yarn ; w_r = K_CONVEX*lam_r.
 # Login-safe (config-only, no 7B weights). Output distinct from the base table.
-import hashlib, json, math, os, sys, time
-import torch
+import hashlib, json, math, os, time
 from transformers import AutoConfig
 import transformers
 

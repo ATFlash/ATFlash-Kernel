@@ -9,6 +9,8 @@ import sys
 
 import torch
 
+# fiwin_common = kernels/flashinfer_port/fiwin_common.py and atflash_window =
+# window_tables/atflash_window.py in this repository (the paths below are placeholders).
 sys.path.insert(0, "/home/USER/atflash/agents/agentB/fiwin/scripts")
 sys.path.insert(0, "/home/USER/atflash/agents/agentA/fa-b1/flash_attn/cute")
 from atflash_window import window_zhi_from_kret, wavelengths_sorted

@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Phase C: 7B prefill-kernel microbench sweep (fig6 Qwen panel redo).
-Qwen2.5-7B-Instruct-1M shape: n_q=28 / n_kv=4 (group7) / d=128, base=1e7.
-SINGLE-forward prefill (L==S, no chunking) => cuDNN valid (no top-left bug).
-Series: stock FA4 / FA4+window(k=2, C1 zhi base1e7) / SDPA cuDNN / stock FlashInfer.
-B1 protocol: warmup, adaptive iters (target 1.5s, max 200), CUDA-event median,
-input rotation for N>=65536. gpu_lock, timestamped raw. bf16, causal, TF32 off."""
+"""Prefill-kernel sweep on Qwen2.5-7B-Instruct-1M shapes (the Qwen panel of the
+prefill figure).
+Shape: n_q = 28 / n_kv = 4 (GQA group 7) / d = 128, RoPE base 1e7.
+Single-forward prefill (L == S, no chunking), so cuDNN through SDPA is a valid
+baseline (the top-left causal-mask issue only arises with chunking).
+Series: stock FA4 / FA4 + window (k = 2, the window_tables/ table for base 1e7) /
+SDPA cuDNN / stock FlashInfer.
+Timing protocol as in b1_bench_protocol.py: warm-up, adaptive iterations (target
+1.5 s, at most 200), CUDA-event median, input rotation for N >= 65536. Runs under
+an exclusive GPU lock and writes timestamped raw results. bf16, causal, TF32 off."""
 import argparse
 import json
-import math
 import os
 import statistics
 import sys

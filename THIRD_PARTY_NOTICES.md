@@ -33,7 +33,7 @@ Affected files:
 | `kernels/flashinfer_port/decode.cuh.diff` | Diff against upstream (48 lines of upstream context). |
 | `kernels/flashinfer_port/utils.cuh.diff` | Diff against upstream (6 lines of upstream context). |
 
-`kernels/flashinfer_port/fi_window_helpers.py` is original work; it calls the
+`kernels/flashinfer_port/fiwin_common.py` is original work; it calls the
 FlashInfer API but contains no upstream code.
 
 ## Everything else

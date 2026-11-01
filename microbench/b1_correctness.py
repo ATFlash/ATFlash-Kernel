@@ -1,18 +1,19 @@
 #!/usr/bin/env python
-"""agentA B1 step(2): W1-grade correctness vs w01 banded fp32 reference.
+"""Correctness of the FA4 prefill window against the banded fp32 reference
+(atflash/reference.py).
 
-FA4 b1-window (PYTHONPATH = shim_b1 + shared/src), window ON k_ret=2.0,
-pack_gqa=False (tile quantization matches w01 block_m/block_n semantics).
-Tiles = FA4 sm120 defaults: d=128 -> (BM,BN)=(128,64); d<=64 -> (128,128).
-Tol rule (W1): max|out - ref32| <= 2*max|ref16 - ref32| + 2e-3.
-Grid: llama(24/8/128 base 5e5) N in {512,2048,8192,32768};
-      qwen(14/2/64  base 1e6) N in {512,2048,8192,32768}.
-Optionally --real <npz> adds one real-model-q/k case (pair-permuted inside).
-provisional (PR#2656 unmerged base).
+FA4 with the window port (PYTHONPATH must expose the built port), window on with
+k_ret = 2.0, pack_gqa = False so that the tile quantization matches the
+reference's block_m / block_n. Tiles are the FA4 sm120 defaults:
+d = 128 -> (BM, BN) = (128, 64); d <= 64 -> (128, 128).
+Tolerance rule: max|out - ref32| <= 2 * max|ref16 - ref32| + 2e-3.
+Grid: Llama (24/8/128, base 5e5) and Qwen (14/2/64, base 1e6), N in
+{512, 2048, 8192, 32768}. --real <npz> adds one case on real model q/k (the
+pair permutation is applied inside).
+FA4 base: PR #2656 head 4f1fde1.
 """
 import argparse
 import json
-import math
 import os
 import sys
 
@@ -59,16 +60,6 @@ def fast_slice_stats(N, BM, BN, zhi_perN, d):
 
 def fa4_tiles(d):
     return (128, 64) if d > 64 else (128, 128)
-
-
-def sorted_pair_perm(d):
-    """dim permutation: sorted pair j <- std pair r=P-1-j (both dims of the pair)."""
-    P = d // 2
-    idx = []
-    for j in range(P):
-        r = P - 1 - j
-        idx += [2 * r, 2 * r + 1]
-    return torch.tensor(idx, dtype=torch.long)
 
 
 def run_case(name, hq, hkv, d, base, N, q_bhsd, k_bhsd, v_bhsd, results):
@@ -239,7 +230,7 @@ def main():
             n_fail += 1
 
     with open(os.path.join(args.outdir, "w01_correctness.json"), "w") as f:
-        json.dump({"tol_rule": "max|out-ref32| <= 2*max|ref16-ref32| + 2e-3 (W1)",
+        json.dump({"tol_rule": "max|out-ref32| <= 2*max|ref16-ref32| + 2e-3",
                    "results": results}, f, indent=1)
     n = len(results)
     print(f"RESULT: {n - n_fail}/{n} PASS")

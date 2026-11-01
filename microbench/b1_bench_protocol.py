@@ -1,17 +1,21 @@
 #!/usr/bin/env python
-"""agentA B1 full prefill sweep (process A): cudnn + FA4 {off,on} x {packT,packF}.
+"""Prefill sweep of the FA4 window port (process A of two): cuDNN, and FA4 with
+the window off and on, each with pack_gqa on and off (packT / packF).
 
-7 official categories: llama 8k/32k/64k/160k + qwen 8k/32k/64k (qwen64k = OOD,
-model ctx 32k — annotation inherited). BASELINE_PROTOCOL timing: probe -> warmup 10
--> n = clamp(1.5s/est, 10, 200) -> per-call CUDA events, median, all iters saved.
-TF32 off, b=1, causal, bf16. Input-buffer rotation n_copies=2 for N>=65536 (new
-categories; 8k/32k keep the legacy no-rotation convention for comparability with
-the registered baseline/SOTA prefill numbers). Window: k_ret=2.0, zhi cap 262144
-(>= max diag of all cases; level-equivalent to per-N tables).
-Main metric: attainment of the 2/(1+s) ceiling, s = per-case
-QK slice ratio (FA4 tile quantization) recorded as qk_slice_ratio_theory.
-provisional (base PR#2656 head 4f1fde1; PR merged upstream as squash 5835c73 on
-2026-07-07 but main has diverged -> rebase deferred).
+Seven cases: Llama 8K/32K/64K/160K and Qwen 8K/32K/64K (Qwen at 64K is beyond
+the model's 32K context and is kept as a kernel shape). Timing protocol: one
+probe call, 10 warm-up calls, then n = clamp(1.5 s / estimate, 10, 200) calls
+timed with per-call CUDA events; the median is reported and every iteration is
+saved. TF32 off, batch 1, causal, bf16. For N >= 65536 the inputs rotate over
+two copies; 8K/32K keep the earlier no-rotation convention so they stay
+comparable with the earlier prefill numbers. Window: k_ret = 2.0 with the zhi
+table capped at 262144 (at least the largest diagonal of every case, so the
+level boundaries equal those of per-N tables).
+Main metric: the fraction of the 2/(1+s) ceiling attained, where s is the
+per-case QK slice ratio after FA4 tile quantization (recorded as
+qk_slice_ratio_theory).
+FA4 base: PR #2656 head 4f1fde1 (merged upstream as squash commit 5835c73 on
+2026-07-07; this sweep stays on 4f1fde1).
 """
 import argparse
 import json

@@ -1,6 +1,6 @@
-# microbench/ — port-latency figure / §7.1
+# microbench/ — port-latency figure
 
-The 7B prefill microbenchmark behind the port-latency figure (§7.1) plus the
+The 7B prefill microbenchmark behind the port-latency figure plus the
 diagnostic probes that fixed the measurement protocol.
 
 | file | role |
@@ -38,4 +38,4 @@ with the `_n128k` suffix (the files above cover 8K/32K/64K):
 The digest also carries series the figure does not draw (`fa4_off_packF`,
 `fa4_on_packF`, `fi_prefill`, `sdpa_flash`), kept so the selection is auditable.
 
-Source: 2026-07-17 RTX staging snapshot. Raw run summaries in `../results_raw/`.
+Measured 2026-07-17 on RTX PRO 6000. Raw run summaries in `../results_raw/`.

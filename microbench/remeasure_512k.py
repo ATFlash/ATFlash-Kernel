@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Reproducibility: re-measure 256k & 512k (fresh seeds/alloc) to confirm stock
-super-quadratic degradation (×4.57 vs window ×3.96). 7B dims, single-forward, bf16."""
+"""Reproducibility check: re-measure 256K and 512K (fresh seeds and allocations)
+to confirm that stock FA4 slows down faster than quadratically between them
+(×4.57, against ×3.96 with the window). 7B shapes, single forward, bf16."""
 import statistics
 import sys
 import torch

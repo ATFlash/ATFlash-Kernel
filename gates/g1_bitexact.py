@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
-"""fiwin G1: window-OFF bit-identity gate.
+"""Gate G1: FlashInfer decode; with the window off the port is bit-identical to
+stock.
 
-Chain per case: shadow_stock (stock module path, patched header, has_member=false)
-  == custom_off (atfwin module, zhi=None)
-  == custom_inf (atfwin module, zhi from k_ret=inf -> INT32_MAX -> pos_min=0).
-Optionally compares against a pristine dump (baseline venv run) if --pristine dir given.
+Per case, three paths must agree bit for bit:
+  shadow_stock  the stock module path built from the patched headers (window
+                member absent),
+  custom_off    the window module (atfwin) with no window table,
+  custom_inf    the window module with the table for k_ret = inf (every entry
+                INT32_MAX, so every slice is always read).
+With --pristine DIR the outputs are also compared with a dump from an unpatched
+install.
 """
 import hashlib
 import json
@@ -14,6 +19,8 @@ import sys
 import torch
 import flashinfer
 
+# fiwin_common = kernels/flashinfer_port/fiwin_common.py and atflash_window =
+# window_tables/atflash_window.py; put both directories on PYTHONPATH.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fiwin_common import build_atfwin_module, make_case, run_atfwin, zhi_slice_vec8
 

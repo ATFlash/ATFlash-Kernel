@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Table 3 1M row n=6: combine p2d2 (docs 0-2) + ext d3/d4/d5 (1 each) -> per-doc table
-# + n6 medians (req_speedup, req_time OFF/ON sec, prefill/decode speedup). Raw values only.
-import json, glob, statistics, sys
+# The 1M point of the end-to-end runs, n = 6: combine the first run (documents
+# 0-2, p2d2) with the three extension runs (documents 3, 4, 5) into a per-document
+# table, then report the n = 6 medians (request speedup, request seconds OFF/ON,
+# prefill and decode speedup). Raw values only.
+import json, glob, statistics
 R = "/home/USER/atflash/shared/results"
 
 def items_of(d):

@@ -3,7 +3,6 @@
 # faithful, NO formula reimplementation) WITHOUT loading 7B weights -> login-safe.
 # lam_r = 2*pi / inv_freq ; w_r = K_CONVEX * lam_r  (convex k=2, same as 0.5B).
 import hashlib, json, math, os, sys, time
-import torch
 from transformers import AutoConfig
 import transformers
 

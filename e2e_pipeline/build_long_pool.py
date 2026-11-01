@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Build a pool of the longest LongBench-v2 'long' items (llama-tokenized) so B2
-can use n>=8 at 64k/128k. CPU-only, offline. Writes lb_long_pool.jsonl sorted by
-token length desc (loader schema + n_tokens), prints the length distribution."""
+"""Build a pool of the longest LongBench-v2 "long" items (Llama-tokenized), so that
+the Llama-3.2-3B end-to-end runs have at least 8 items at 64K/128K. CPU only,
+offline. Writes lb_long_pool.jsonl sorted by token length, longest first (loader
+schema + n_tokens), and prints the length distribution."""
 import glob
 import json
 import os
-import sys
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ.setdefault("HF_HOME", "/home/USER/atflash/shared/data/hf_cache")

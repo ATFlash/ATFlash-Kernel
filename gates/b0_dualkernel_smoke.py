@@ -1,17 +1,21 @@
 # -*- coding: utf-8 -*-
-"""Phase B / B0: dual-kernel single-process smoke + window-OFF bit-identity gate.
+"""Gate B0: both ports in one process; with the window off they are bit-identical
+to the stock kernels.
 
-One process runs FA4-cute prefill THEN patched-FlashInfer decode on ONE shared
-NHD KV buffer. Gate: window-OFF integrated path == stock kernels (bit-identical).
-Also probes: FA4 on a strided (non-contiguous) BSHD view (HF-cache-reuse path),
-and generation of the raw-base zhi tables for both kernels (16- & 8-snap).
-llama dims (GQA group 3). bf16, batch=1.
+One process runs the FA4-port prefill and then the patched FlashInfer decode on
+one shared KV buffer (NHD layout). The gate: with the window off, the integrated
+path equals the stock kernels bit for bit. The script also checks that FA4
+accepts a strided (non-contiguous) BSHD view, as used when the HF cache is
+reused, and generates the raw-base window tables of both kernels (16-dim and
+8-dim snap). Llama-3.2-3B dimensions (GQA group 3), bf16, batch 1.
 """
 import hashlib
 import sys
 
 import torch
 
+# fiwin_common = kernels/flashinfer_port/fiwin_common.py and atflash_window =
+# window_tables/atflash_window.py in this repository (the paths below are placeholders).
 sys.path.insert(0, "/home/USER/atflash/agents/agentB/fiwin/scripts")
 sys.path.insert(0, "/home/USER/atflash/agents/agentA/fa-b1/flash_attn/cute")
 

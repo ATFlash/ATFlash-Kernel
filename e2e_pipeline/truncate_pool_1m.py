@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Phase C / C0: truncate the LB-v2 long pool to ~1.01M tokens (central) with the
-Qwen2.5-7B-Instruct-1M tokenizer, so the C2 sweep (256K/512K/1M) shares one base
-content (harness truncates down). CPU-only, offline. Paired principle = Phase B."""
+"""Truncate the LongBench-v2 long pool to about 1.01M tokens (keeping both ends,
+cutting the middle) with the Qwen2.5-7B-Instruct-1M tokenizer, so that the
+256K/512K/1M end-to-end runs share one base content (the harness truncates
+further per length). CPU only, offline. Same pairing principle as truncate_pool.py."""
 import json
 import os
 

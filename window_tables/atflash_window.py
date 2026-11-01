@@ -1,47 +1,43 @@
 # -*- coding: utf-8 -*-
-"""ATFlash B1: host-side window table for the distance-banded dim-prefix QK window.
+"""Host-side window table for the FA4 port (pure Python, no torch).
 
-This module is a pure-Python port (no torch dependency) of the canonical ATFlash
-window table:
+Scripts in this repository import it as `atflash_window`; the FA4 companion
+repository ships the same code as `flash_attn/cute/atflash_window.py`. It is the
+torch-free twin of atflash/window_table.py:
 
-  - window vector ("wavelength-proportional"; the torch-free twin of
-    atflash/window_table.py::wavelengths_sorted):
-        RoPE pair r (standard order, r=0 highest frequency):
+  - window widths (the rule):
+        RoPE pair r in standard order (r = 0 is the highest frequency):
             theta_r  = rope_base ** (-2*r / head_dim)
             lambda_r = 2*pi / theta_r
             w_r      = k_ret * lambda_r
-        kernel layout is wavelength-SORTED: sorted pair j = standard pair r = P-1-j
-        (j=0 = lowest frequency = longest wavelength, occupying dims (2j, 2j+1)).
-        Hence wvec[j] = k_ret * 2*pi * rope_base ** (2*(P-1-j) / head_dim), descending.
-        A pair is active at causal distance z  <=>  z <= w_r  (fp32 comparison).
+        The kernel stores pairs in wavelength-sorted order: sorted pair j is standard
+        pair r = P-1-j (j = 0 is the lowest frequency, i.e. the longest wavelength) and
+        occupies dims (2j, 2j+1). Hence
+            wvec[j] = k_ret * 2*pi * rope_base ** (2*(P-1-j) / head_dim), descending.
+        A pair is read at causal distance z  <=>  z <= w_r  (fp32 comparison).
 
-  - D_eff snap rule (w01 deff_of_zmin / w06 _deff_host, identical semantics):
+  - D_eff, the length of the dim prefix that is read (16-dim snap of the MMA):
         D_eff(z) = clamp(round_up_16(2 * #{j : wvec[j] >= z}), 16, head_dim)
 
-  - zhi table (w06 _zhi_tensor, identical binary search):
+  - zhi ("z high"), the largest distance at which each 16-dim level is still read:
         zhi[i] = max{ z >= 0 integer : D_eff(z) >= 16*(i+1) }   for i in 0..head_dim//16-1
-        (capped at n_ctx; any cap >= the largest causal diagonal produces identical
-        level boundaries in the kernel, because boundaries clamp at 0).
+        (capped at n_ctx; any cap >= the largest causal diagonal gives the same level
+        boundaries in the kernel, because boundaries clamp at 0).
 
-The tuple returned by zhi_table()/window_zhi_from_kret() is what
-FlashAttentionForwardSm80/Sm120 accept as the compile-time `window_zhi` argument.
+The tuple returned by zhi_table() / window_zhi_from_kret() is what the FA4 forward
+kernels accept as the compile-time `window_zhi` argument.
 
-PRECONDITION (same as the Triton w0x kernels): Q and K must be pre-permuted to the
-wavelength-sorted pair layout described above, so that the active set at any distance
-is a dim-PREFIX.
+Precondition: Q and K must already be permuted into the wavelength-sorted pair
+layout above, so that the set of pairs read at any distance is a dim prefix.
 
-fp32 semantics note: the Triton reference compares fp32 wvec against fp32 z inside the
-kernel and uses the same comparison on the host (w06: "the same fp32 comparison
-semantics"). Here wvec entries are rounded to fp32 via struct packing, and z is an
-integer < 2**24, hence exactly representable in fp32 -- the Python float (fp64)
-comparison `wvec_f32 >= z` is then bit-equivalent to the fp32 comparison.
+fp32 note: the kernel compares fp32 widths against fp32 distances. Here the widths
+are rounded to fp32 through struct packing, and z is an integer < 2**24, hence
+exactly representable in fp32, so the Python (fp64) comparison `wvec_f32 >= z` is
+bit-equivalent to the kernel's fp32 comparison.
 
-VERIFICATION CHECKLIST (RTX, GPU box; do not skip):
-  [ ] zhi_table(wavelengths_sorted(...), ...) must match w06 _zhi_tensor output with
-      0 diff for the shapes under test (llama d=128 base=500000.0, qwen d=128 base=
-      1000000.0, N in {8k, 32k}), and the induced per-tile D_eff must match
-      w01_torch_ref window_table.deff_segments / verify_restructure.py section (4)
-      conventions (active = z <= w_r) with 0 diff.
+Running this file performs structural self-checks only. The equality of these
+tables with the ones the kernels and the torch reference use is checked by
+tools/cpu_checks.py (CPU) and by the gates (GPU).
 """
 import math
 import struct
@@ -73,14 +69,14 @@ def wavelengths_sorted(head_dim: int, rope_base: float, k_ret: float) -> Tuple[f
 
 
 def n_active(z_min: int, wvec: Sequence[float]) -> int:
-    """#pairs active at distance z_min (fp32 comparison; identical to kernel/w01)."""
+    """Number of pairs read at distance z_min (fp32 comparison, as in the kernel)."""
     z = float(z_min)
     return sum(1 for w in wvec if w >= z)
 
 
 def deff_of_zmin(z_min: int, wvec: Sequence[float], head_dim: int) -> int:
-    """dim-prefix length: 2*n_active, rounded UP to a multiple of 16, clamped to
-    [16, head_dim]. Identical to w01 deff_of_zmin / w06 _deff_host."""
+    """Dim-prefix length: 2*n_active, rounded up to a multiple of 16, clamped to
+    [16, head_dim]. Same rule as atflash/window_table.py::deff_of_zmin."""
     deff = 2 * n_active(z_min, wvec)
     deff = ((deff + 15) // 16) * 16
     return max(16, min(head_dim, deff))
@@ -89,8 +85,8 @@ def deff_of_zmin(z_min: int, wvec: Sequence[float], head_dim: int) -> int:
 def zhi_table(wvec: Sequence[float], head_dim: int, n_ctx: int) -> Tuple[int, ...]:
     """zhi[i] = max{ z >= 0 int : D_eff(z) >= 16*(i+1) }, capped at n_ctx.
 
-    Port of w06 _zhi_tensor (identical binary search; D_eff(0) = head_dim >= e always
-    holds, D_eff is non-increasing in z).
+    Binary search per level; valid because D_eff(0) = head_dim >= e always holds
+    and D_eff is non-increasing in z.
     """
     assert head_dim % 16 == 0, "head_dim must be a multiple of 16"
     assert len(wvec) == head_dim // 2, "wvec must have head_dim//2 entries"
@@ -115,15 +111,14 @@ def zhi_table(wvec: Sequence[float], head_dim: int, n_ctx: int) -> Tuple[int, ..
 def window_zhi_from_kret(
     head_dim: int, rope_base: float, k_ret: float, n_ctx: int
 ) -> Tuple[int, ...]:
-    """Convenience: wavelength-proportional window (k_ret) -> `window_zhi` tuple for
-    FlashAttentionForwardSm80/Sm120 (and the `atflash_window_zhi` argument of
-    interface._flash_attn_fwd)."""
+    """Window rule (k_ret) -> the `window_zhi` tuple of the FA4 forward kernels, i.e.
+    the `atflash_window_zhi` argument of flash_attn.cute.interface._flash_attn_fwd."""
     return zhi_table(wavelengths_sorted(head_dim, rope_base, k_ret), head_dim, n_ctx)
 
 
 if __name__ == "__main__":
-    # Structural self-check only (no reference numbers are asserted here; the
-    # 0-diff check against w06 _zhi_tensor / w01 deff_segments runs on the GPU box).
+    # Structural self-check only; no reference numbers are asserted here (see
+    # tools/cpu_checks.py for the equality checks against the recorded tables).
     for d, base in ((64, 10000.0), (128, 500000.0), (128, 1000000.0)):
         for n_ctx in (8192, 32768):
             wv = wavelengths_sorted(d, base, 2.0)

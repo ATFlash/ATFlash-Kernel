@@ -1,14 +1,18 @@
 # -*- coding: utf-8 -*-
-"""fiwin G2+G3: windowed correctness vs vec8-exact reference + real-data KL.
+"""Gates G2 and G3: correctness of the FlashInfer decode window, and the effect of
+the window on real attention weights.
 
-References (decode, M=1):
-  ref_vec8  : exactly the kernel's window model -- slice tx (8 dims) active for
-              age <= zhi_slice[tx]; fp32 ("ref32") and bf16-matmul ("ref16", anchor).
-  ref_pair  : pair-exact canonical w01 window (zhi per pair = floor(w_j)), fp32.
-Gate (W1 rule, agentA convention): max|out - ref32_vec8| <= 2*max|ref16-ref32| + 2e-3.
-Reported extra: snap_cost = max|ref32_vec8 - ref32_pair| (vec8 snap-up inclusion),
-real-data attention-weight KL (exact vs vec8 window, fp64) for the V2cap qwen case.
-RoPE/permute helpers ported from agentA b1_correctness_w01.py (canonical layout).
+References (decode, one query):
+  ref_vec8  exactly the kernel's window model: the 8-dim slice tx is read for key
+            distances up to zhi_slice[tx]; computed in fp32 ("ref32") and with
+            bf16 matmuls ("ref16", the error anchor).
+  ref_pair  the per-pair window (pair j read up to floor(w_j)), fp32.
+Pass rule: max|out - ref32_vec8| <= 2 * max|ref16 - ref32| + 2e-3 (the same rule
+as microbench/b1_correctness.py).
+Also reported: snap_cost = max|ref32_vec8 - ref32_pair|, the cost of rounding the
+window up to 8-dim slices, and, on captured Qwen activations, the attention-weight
+KL between exact attention and the vec8 window (fp64).
+The RoPE and permutation helpers follow microbench/b1_correctness.py.
 """
 import json
 import math
@@ -19,13 +23,15 @@ import numpy as np
 import torch
 import flashinfer  # noqa: F401  (shadow package sanity)
 
+# fiwin_common = kernels/flashinfer_port/fiwin_common.py and atflash_window =
+# window_tables/atflash_window.py; put both directories on PYTHONPATH.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fiwin_common import (VEC_SIZE, build_atfwin_module, make_case, run_atfwin,
                           zhi_slice_vec8)
 from atflash_window import wavelengths_sorted  # via fiwin_common sys.path
 
 K_RET = 2.0
-V2CAP = "/home/USER/atflash/shared/results/20260705_162750_kernel_M4e_V2cap"
+REF_DIR = "/home/USER/atflash/g2_reference"  # holds qkv_qwen_L12.npz and meta_qwen.json
 
 
 def _slice_masks(N, zhi, device):
@@ -132,13 +138,13 @@ def main(outdir):
         for kv in kvs:
             q, k, v, base = make_case(model, kv)
             ok &= gate_case(f"{model}_rand_kv{kv}", q, k, v, base, results)
-    # real qwen decode-form (V2cap, pre-RoPE bf16 bits)
-    z = np.load(os.path.join(V2CAP, "qkv_qwen_L12.npz"))
+    # real qwen decode-form (captured tensors, pre-RoPE bf16 bits)
+    z = np.load(os.path.join(REF_DIR, "qkv_qwen_L12.npz"))
     kf = torch.from_numpy(z["k_full"].astype(np.uint16)).view(torch.bfloat16).cuda()
     vf = torch.from_numpy(z["v_full"].astype(np.uint16)).view(torch.bfloat16).cuda()
     qt = torch.from_numpy(z["q_tail"].astype(np.uint16)).view(torch.bfloat16).cuda()
     hkv, N, d = kf.shape
-    inv_freq = torch.tensor(json.load(open(os.path.join(V2CAP, "meta_qwen.json")))["inv_freq"],
+    inv_freq = torch.tensor(json.load(open(os.path.join(REF_DIR, "meta_qwen.json")))["inv_freq"],
                             device="cuda", dtype=torch.float32)
     k_r = _rope_hf(kf, torch.arange(N, device="cuda"), inv_freq)
     q_r = _rope_hf(qt[:, -1:, :], torch.tensor([N - 1], device="cuda"), inv_freq)
@@ -148,7 +154,7 @@ def main(outdir):
     q_s = q_r[..., perm].to(torch.bfloat16).squeeze(1).contiguous()        # (hq,d)
     ok &= gate_case("real_qwen_L12_decodeform", q_s, k_s, v_s, 1000000.0, results, kl=True)
     report = {"meta": {"purpose": "G2 vec8-window correctness + G3 real-data KL",
-                       "gate": "max|out-ref32_vec8| <= 2*anchor+2e-3 (W1 rule)",
+                       "gate": "max|out-ref32_vec8| <= 2*anchor+2e-3",
                        "torch": torch.__version__},
               "results": results, "pass_all": bool(ok)}
     with open(os.path.join(outdir, "g2_correctness.json"), "w") as f:
