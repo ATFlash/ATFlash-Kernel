@@ -180,7 +180,7 @@ model stays within `0.5` points of full attention
 > [!TIP]
 > **All results at a glance, each with its figure and a one-line takeaway:
 > [`docs/overview.md`](docs/overview.md)** — kernel speed, and output quality
-> from 0.5B to 70B and on MiniMax-M2.7.
+> from 0.5B to 70B and on MiniMax-M2.7, a 229B-parameter MoE model.
 
 ## License
 
