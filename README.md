@@ -163,16 +163,16 @@ the two measurement processes, kept because they are part of the run directory
 names the raw summaries refer to. Point the paths at your own environment to
 re-run.
 
-## MiMo-V2.6 and MTP
+## MiMo-V2.6-Pro-RL and MTP
 
-On MiMo-V2.6, a 1.02T-parameter MoE model with a native 1M context, LongBench-v2
+On MiMo-V2.6-Pro-RL, a 1.02T-parameter MoE model with a native 1M context, LongBench-v2
 accuracy with the window (`k = 2`) stays within `−1.59` to `+2.51` points of the
 unwindowed model at 16K–128K, and the difference is `0.0` points at 512K
 ([`evaluations/mimo_v26_longbench_v2/`](evaluations/mimo_v26_longbench_v2/)).
 
 <p align="center"><img src="figs/mimo_longbench_v2_512k.png" width="85%"></p>
 
-The window also works with MiMo-V2.6's multi-token prediction (MTP) head for
+The window also works with MiMo-V2.6-Pro-RL's multi-token prediction (MTP) head for
 speculative decoding: with `k = 1–4`, how often an MTP draft matches the target
 model stays within `0.5` points of full attention
 ([`evaluations/mimo_v26_mtp_compatibility/`](evaluations/mimo_v26_mtp_compatibility/)).
